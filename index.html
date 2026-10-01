@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="corporate">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChromaClear | Comprehensive Clinical & Occupational Color Vision Diagnostic Suite</title>
+  <meta name="description" content="Peer-reviewed color vision deficiency screening with dynamic luminance noise plates, Farnsworth D-15 moment of inertia scoring, Cambridge CAD adaptive staircase, and Machado LMS spectral vision simulation.">
+  
+  <!-- GitHub Pages OpenGraph & Meta Tags -->
+  <meta property="og:title" content="ChromaClear - Clinical Color Vision Suite">
+  <meta property="og:description" content="Comprehensive color blindness diagnostic testing suite backed by peer-reviewed vision science.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#2563eb">
+
+  <!-- Favicon SVG (Inline data URI so it never 404s on GitHub Pages or local preview) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='35' cy='40' r='28' fill='%23ef4444' opacity='0.85'/><circle cx='65' cy='40' r='28' fill='%2322c55e' opacity='0.85'/><circle cx='50' cy='68' r='28' fill='%233b82f6' opacity='0.85'/></svg>">
+
+  <!-- DaisyUI CSS (Local fallback + CDN) -->
+  <link href="./daisyui.min.css" rel="stylesheet" type="text/css">
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@latest/dist/full.min.css" rel="stylesheet" type="text/css">
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            protan: '#ef4444',
+            deutan: '#10b981',
+            tritan: '#3b82f6'
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Custom Companion Stylesheet -->
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body class="min-h-screen flex flex-direction-column flex-col bg-base-200 text-base-content font-sans antialiased">
+  
+  <!-- Accessibility Live Region for Screen Readers -->
+  <div id="sr-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- ================================================================= -->
+  <!-- Top Navigation & Brand Header -->
+  <!-- ================================================================= -->
+  <header class="navbar bg-base-100 shadow-md sticky top-0 z-50 px-4 lg:px-8 border-b border-base-300">
+    <div class="navbar-start gap-3">
+      <div class="flex items-center gap-2 cursor-pointer" onclick="AppNav.switchModule('module-calibration')" title="Return to Calibration">
+        <svg viewBox="0 0 40 40" width="36" height="36" aria-hidden="true" class="drop-shadow">
+          <circle cx="14" cy="16" r="11" fill="#ef4444" opacity="0.88"/>
+          <circle cx="26" cy="16" r="11" fill="#10b981" opacity="0.88"/>
+          <circle cx="20" cy="27" r="11" fill="#3b82f6" opacity="0.88"/>
+        </svg>
+        <div>
+          <h1 class="text-xl font-black tracking-tight leading-none text-primary">ChromaClear</h1>
+          <p class="text-xs font-semibold text-base-content/60">Color Vision Suite</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Central Progress Steps (Desktop / Tablet) -->
+    <div class="navbar-center hidden xl:flex">
+      <ul class="steps steps-horizontal text-xs font-bold">
+        <li class="step step-primary cursor-pointer nav-step" id="nav-step-1" data-target="module-calibration">Calibration</li>
+        <li class="step cursor-pointer nav-step" id="nav-step-2" data-target="module-plates">Dynamic Plates</li>
+        <li class="step cursor-pointer nav-step" id="nav-step-3" data-target="module-d15">Farnsworth D-15</li>
+        <li class="step cursor-pointer nav-step" id="nav-step-4" data-target="module-cad">CAD Adaptive</li>
+        <li class="step cursor-pointer nav-step" id="nav-step-5" data-target="module-results">Report & Simulator</li>
+      </ul>
+    </div>
+
+    <div class="navbar-end gap-2">
+      <!-- Quick Module Dropdown for Mobile / Small Screens -->
+      <div class="dropdown dropdown-end xl:hidden">
+        <label tabindex="0" class="btn btn-ghost btn-circle" aria-label="Open Navigation Menu">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </label>
+        <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow-2xl bg-base-100 rounded-box w-52 border border-base-200">
+          <li><a class="nav-link font-semibold" data-target="module-calibration">1. Calibration</a></li>
+          <li><a class="nav-link font-semibold" data-target="module-plates">2. Dynamic Plates</a></li>
+          <li><a class="nav-link font-semibold" data-target="module-d15">3. Farnsworth D-15</a></li>
+          <li><a class="nav-link font-semibold" data-target="module-cad">4. CAD Adaptive</a></li>
+          <li><a class="nav-link font-semibold" data-target="module-results">5. Report & Simulator</a></li>
+        </ul>
+      </div>
+
+      <!-- Web Audio Sound Effects Toggle -->
+      <button id="btn-audio-toggle" class="btn btn-ghost btn-circle" title="Toggle Audio Feedback" aria-label="Toggle Sound">
+        <svg class="icon-sound-on" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.08"/></svg>
+        <svg class="icon-sound-off hidden" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+      </button>
+
+      <!-- DaisyUI Theme Toggle Controller -->
+      <button id="btn-theme-toggle" class="btn btn-ghost btn-circle" title="Toggle Dark / Light Theme" aria-label="Toggle Theme">
+        <svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="icon-sun hidden" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile Sub-Header Progress Bar (Visible on < xl screens) -->
+  <div class="xl:hidden bg-base-100 border-b border-base-300 px-4 py-2.5 sticky top-[65px] z-40 shadow-sm flex items-center justify-between gap-3">
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between text-xs font-bold mb-1">
+        <span class="text-primary truncate" id="mobile-step-title">Step 1: Calibration</span>
+        <span class="font-mono text-base-content/60 shrink-0 ml-2" id="mobile-step-indicator">1 / 5</span>
+      </div>
+      <progress id="mobile-progress-bar" class="progress progress-primary w-full h-1.5" value="20" max="100"></progress>
+    </div>
+    <div class="flex items-center gap-1 shrink-0">
+      <button class="btn btn-xs btn-ghost btn-circle" id="mobile-btn-prev" title="Previous Step" aria-label="Previous Step">◀</button>
+      <button class="btn btn-xs btn-primary btn-circle text-primary-content" id="mobile-btn-next" title="Next Step" aria-label="Next Step">▶</button>
+    </div>
+  </div>
+
+  <!-- Global Pre-Test Notice Banner -->
+  <div class="max-w-6xl mx-auto px-4 mt-4 w-full" id="alert-banner">
+    <div class="alert alert-warning shadow-md flex items-center justify-between py-3">
+      <div class="flex items-center gap-3">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div class="text-sm">
+          <span class="font-bold">Important Pre-Test Optics:</span> Turn off <em>Night Shift</em>, <em>True Tone</em>, <em>f.lux</em>, or screen blue-light filters. Set display brightness to 70–80%.
+        </div>
+      </div>
+      <button class="btn btn-sm btn-ghost btn-circle" id="btn-dismiss-alert" aria-label="Dismiss">&times;</button>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="max-w-6xl mx-auto px-4 py-6 w-full flex-1">
+
+    <!-- ================================================================= -->
+    <!-- MODULE 1: Calibration & Optics -->
+    <!-- ================================================================= -->
+    <section id="module-calibration" class="diagnostic-module active">
+      <div class="mb-6">
+        <div class="badge badge-primary font-bold mb-2 uppercase tracking-wide">Battery 1 of 4 • Environmental Setup</div>
+        <h2 class="text-3xl font-black tracking-tight text-base-content">Display Calibration & Test Environment</h2>
+        <p class="text-base text-base-content/70 mt-1 max-w-2xl">Standardized color vision diagnostics require verifying display gamma, eliminating chromatic filters, and observing standardized viewing distances.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Display Gamma Verification -->
+        <div class="card bg-base-100 shadow-xl border border-base-200">
+          <div class="card-body">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="card-title text-lg font-bold">1. Display Gamma & Luminance Range</h3>
+              <span class="badge badge-outline text-xs font-semibold">sRGB Standard</span>
+            </div>
+            <p class="text-sm text-base-content/70">Verify that your display renders shadow detail and bright highlights without clipping:</p>
+            
+            <div class="grid grid-cols-5 h-16 rounded-xl overflow-hidden my-4 border border-base-300 shadow-inner font-mono text-xs font-bold">
+              <div class="bg-black text-gray-400 flex items-center justify-center">0%</div>
+              <div class="bg-[#0e0e0e] text-gray-400 flex items-center justify-center">5%</div>
+              <div class="bg-[#808080] text-black flex items-center justify-center">50%</div>
+              <div class="bg-[#f2f2f2] text-gray-500 flex items-center justify-center">95%</div>
+              <div class="bg-white text-gray-400 flex items-center justify-center">100%</div>
+            </div>
+
+            <div class="space-y-3 mt-2 text-sm">
+              <label class="label cursor-pointer justify-start gap-3 p-0">
+                <input type="checkbox" id="chk-calib-gamma" class="checkbox checkbox-primary checkbox-sm" checked>
+                <span>The 5% step is distinctly visible against 0% deep black.</span>
+              </label>
+              <label class="label cursor-pointer justify-start gap-3 p-0">
+                <input type="checkbox" id="chk-calib-white" class="checkbox checkbox-primary checkbox-sm" checked>
+                <span>The 95% step is distinctly visible against 100% pure white.</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Viewing Distance & Optics -->
+        <div class="card bg-base-100 shadow-xl border border-base-200">
+          <div class="card-body">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="card-title text-lg font-bold">2. Viewing Geometry & Lighting</h3>
+              <span class="badge badge-info text-xs font-semibold">Clinical Norms</span>
+            </div>
+
+            <div class="space-y-4 text-sm text-base-content/80 mt-1">
+              <div class="flex items-start gap-3">
+                <span class="text-2xl leading-none">📏</span>
+                <div>
+                  <strong class="text-base-content font-bold block">Viewing Distance: 50 – 60 cm</strong>
+                  Viewing the screen at arm's length subtends the standardized optometric visual angle for foveal cone stimulation.
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <span class="text-2xl leading-none">💡</span>
+                <div>
+                  <strong class="text-base-content font-bold block">Neutral Indirect Lighting</strong>
+                  Eliminate direct sunbeams or lamp glare reflecting off your monitor glass.
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <span class="text-2xl leading-none">👓</span>
+                <div>
+                  <strong class="text-base-content font-bold block">Prescription Lenses</strong>
+                  Wear your regular computer spectacles if prescribed. Do not wear tinted lenses or sunglasses.
+                </div>
+              </div>
+            </div>
+
+            <label class="label cursor-pointer justify-start gap-3 mt-3 p-0 text-sm">
+              <input type="checkbox" id="chk-calib-env" class="checkbox checkbox-primary checkbox-sm" checked>
+              <span>Night Shift is disabled and ambient lighting is neutral.</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overview of the 3 Diagnostic Batteries -->
+      <div class="card bg-base-100 shadow-xl border border-base-200 mt-6">
+        <div class="card-body">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="card-title text-xl font-bold">The ChromaClear 3-Tier Multi-Modal Battery</h3>
+            <span class="badge badge-success text-xs font-bold">Peer-Reviewed Vision Science</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-base-200 p-5 rounded-2xl border border-base-300 flex flex-col justify-between">
+              <div>
+                <span class="text-3xl mb-2 block">🎨</span>
+                <h4 class="font-bold text-base text-base-content">Tier 1: Dynamic Plates</h4>
+                <p class="text-xs text-base-content/70 mt-1">HRR + Ishihara with <strong>Dynamic Luminance Contrast Noise (DLCN)</strong>. Screens both Red-Green and Blue-Yellow (Tritan) defects while isolating cone pathways from display luminance cues.</p>
+              </div>
+              <div class="badge badge-primary badge-outline text-xs mt-3">~2 min • 8 plates</div>
+            </div>
+
+            <div class="bg-base-200 p-5 rounded-2xl border border-base-300 flex flex-col justify-between">
+              <div>
+                <span class="text-3xl mb-2 block">🎯</span>
+                <h4 class="font-bold text-base text-base-content">Tier 2: Farnsworth D-15</h4>
+                <p class="text-xs text-base-content/70 mt-1">Quantitative 15-cap hue ordering scored with <strong>Vingrys & King-Smith (1988)</strong> Moment of Inertia analysis, calculating exact Confusion Index ($C$-Index), Selectivity ($S$-Index), and Angle ($\theta$).</p>
+              </div>
+              <div class="badge badge-secondary badge-outline text-xs mt-3">~2 min • 15 caps</div>
+            </div>
+
+            <div class="bg-base-200 p-5 rounded-2xl border border-base-300 flex flex-col justify-between">
+              <div>
+                <span class="text-3xl mb-2 block">⚡</span>
+                <h4 class="font-bold text-base text-base-content">Tier 3: CAD Adaptive</h4>
+                <p class="text-xs text-base-content/70 mt-1">Cambridge / City University CAD Trivector test. 60 FPS dynamic noise canvas with a 4-AFC Landolt-C staircase assessing isoluminant chromatic contrast thresholds in standardized CAD units.</p>
+              </div>
+              <div class="badge badge-accent badge-outline text-xs mt-3">~3 min • Adaptive</div>
+            </div>
+          </div>
+
+          <div class="text-center mt-6">
+            <button id="btn-start-battery" class="btn btn-primary btn-lg shadow-xl gap-2 font-bold">
+              <span>Begin Complete Diagnostic Suite</span>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+            <div class="text-xs text-base-content/60 mt-3 space-x-2">
+              <span>Direct jump:</span>
+              <button class="btn btn-xs btn-ghost text-primary" data-jump="module-plates">Dynamic Plates</button>•
+              <button class="btn btn-xs btn-ghost text-primary" data-jump="module-d15">Farnsworth D-15</button>•
+              <button class="btn btn-xs btn-ghost text-primary" data-jump="module-cad">CAD Adaptive Staircase</button>•
+              <button class="btn btn-xs btn-ghost text-primary" data-jump="module-results">Clinical Report & Simulator</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- MODULE 2: Dynamic Pseudoisochromatic Plates -->
+    <!-- ================================================================= -->
+    <section id="module-plates" class="diagnostic-module">
+      <div class="mb-6">
+        <div class="badge badge-primary font-bold mb-2 uppercase tracking-wide">Battery 2 of 4 • Plate Screening</div>
+        <h2 class="text-3xl font-black tracking-tight text-base-content">Dynamic Pseudoisochromatic Plates (DLCN)</h2>
+        <p class="text-base text-base-content/70 mt-1 max-w-2xl">Procedurally synthesized dot patterns embedded with <strong>Dynamic Luminance Contrast Noise</strong>. Eliminates screen brightness cues so figures are detectable <em>exclusively</em> through retinal cone signals.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <!-- Canvas Viewport Card (7 Cols) -->
+        <div class="card bg-base-100 shadow-xl border border-base-200 lg:col-span-7">
+          <div class="card-body p-4 sm:p-6">
+            <div class="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-base-200">
+              <div class="flex items-center gap-2">
+                <span id="plate-counter-badge" class="badge badge-neutral font-mono font-bold">Plate 1 of 8</span>
+                <span id="plate-category-badge" class="badge badge-info text-xs font-bold">Demonstration Plate</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <label class="label cursor-pointer gap-2 p-0 text-xs font-bold" title="Toggle real-time flicker noise">
+                  <span>Dynamic DLCN</span>
+                  <input type="checkbox" id="toggle-dynamic-noise" class="toggle toggle-primary toggle-sm" checked>
+                </label>
+                <button id="btn-regenerate-plate" class="btn btn-sm btn-ghost btn-circle" title="Regenerate plate dots" aria-label="Regenerate">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Canvas Viewport -->
+            <div class="flex items-center justify-center p-4 bg-base-200 rounded-2xl my-2 relative overflow-hidden">
+              <canvas id="plate-canvas" width="460" height="460" class="rounded-full shadow-2xl bg-base-100 max-w-full h-auto" role="img" aria-label="Pseudoisochromatic test plate"></canvas>
+            </div>
+
+            <p class="text-xs text-center text-base-content/60">💡 Look at the plate at 50 cm. Enter the digit(s) you perceive within the dot mosaic.</p>
+          </div>
+        </div>
+
+        <!-- Keypad & Input Card (5 Cols) -->
+        <div class="card bg-base-100 shadow-xl border border-base-200 lg:col-span-5">
+          <div class="card-body p-4 sm:p-6">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="card-title text-base font-bold">Enter What You See</h3>
+              <span id="plate-latency-indicator" class="badge badge-ghost font-mono text-xs">Latency: -- ms</span>
+            </div>
+
+            <!-- Digital Input Display -->
+            <div class="relative mb-4">
+              <input type="text" id="plate-input-display" readonly placeholder="Enter digit(s)..." class="input input-bordered input-primary w-full text-center text-3xl font-mono font-bold tracking-widest bg-base-200">
+              <button id="btn-input-clear" class="btn btn-sm btn-ghost btn-circle absolute right-2 top-1/2 -translate-y-1/2 text-xl" title="Clear input">&times;</button>
+            </div>
+
+            <!-- Virtual 0-9 Keypad -->
+            <div class="grid grid-cols-3 gap-2">
+              <button class="btn btn-neutral text-xl font-bold font-mono keypad-btn" data-key="1">1</button>
+              <button class="btn btn-neutral text-xl font-bold font-mono keypad-btn" data-key="2">2</button>
+              <button class="btn btn-neutral text-xl font-bold font-mono keypad-btn" data-key="3">3</button>
+              <button class="btn btn-neutral text-xl font-bold font-mono keypad-btn" data-key="4">4</button>
+              <button class="btn btn-neutral text-xl font-bold font-mono keypad-btn" data-key="5">5</button>
+              <button class="btn btn-neutral text-xl font-bold font-mono keypad-btn" data-key="6">6</button>
+              <button class="btn btn-neutral text-xl font-bold font-mono keypad-btn" data-key="7">7</button>
+              <button class="btn btn-neutral text-xl font-bold font-mono keypad-btn" data-key="8">8</button>
+              <button class="btn btn-neutral text-xl font-bold font-mono keypad-btn" data-key="9">9</button>
+              <button class="btn btn-warning text-xs font-bold keypad-btn keypad-special" data-key="none" id="btn-key-nothing" title="No digit or symbol is visible">Nothing Visible (X)</button>
+              <button class="btn btn-neutral text-xl font-bold font-mono keypad-btn" data-key="0">0</button>
+              <button class="btn btn-primary text-sm font-bold keypad-submit" id="btn-submit-plate" title="Submit response">Submit ➔</button>
+            </div>
+
+            <p class="text-xs text-center text-base-content/50 mt-2">Keyboard hotkeys: Keys <code>0-9</code>, <code>X</code> (nothing), <code>Backspace</code>, <code>Enter</code></p>
+
+            <!-- 8 Progress Dots -->
+            <div class="flex items-center justify-center gap-2 mt-4" id="plate-dots-container"></div>
+
+            <!-- Diagnostic Rationale Alert Box -->
+            <div class="alert alert-info shadow-sm py-2 px-3 mt-4 text-xs">
+              <div>
+                <strong id="plate-clinical-intent-title" class="font-bold block">Plate Rationale: Demonstration</strong>
+                <span id="plate-clinical-intent-desc" class="text-xs opacity-85">Tests patient comprehension. Visible to all trichromats, dichromats, and monochromats.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Module Navigation Bar -->
+      <div class="card bg-base-100 shadow-md border border-base-200 mt-6 p-4 flex flex-row items-center justify-between">
+        <button class="btn btn-outline btn-sm font-bold" data-prev="module-calibration">⬅ Back</button>
+        <span class="text-xs text-base-content/70 font-semibold" id="plates-completion-text">8 plates in this screening battery.</span>
+        <button class="btn btn-primary btn-sm font-bold" id="btn-finish-plates" data-next="module-d15">Proceed to D-15 ➡</button>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- MODULE 3: Farnsworth D-15 Arrangement Test -->
+    <!-- ================================================================= -->
+    <section id="module-d15" class="diagnostic-module">
+      <div class="mb-6">
+        <div class="badge badge-secondary font-bold mb-2 uppercase tracking-wide">Battery 3 of 4 • Quantitative Hue Ordering</div>
+        <h2 class="text-3xl font-black tracking-tight text-base-content">Farnsworth D-15 Panel Test (Vingrys & King-Smith 1988)</h2>
+        <p class="text-base text-base-content/70 mt-1 max-w-2xl">Arrange the 15 saturated Munsell color caps in order of gradual hue transition starting from the fixed reference pilot cap. Results are scored using full <strong>moment of inertia analysis</strong> in CIE $u', v'$ chromaticity space.</p>
+      </div>
+
+      <!-- Arrangement Rack & Tray Workspace -->
+      <div class="card bg-base-100 shadow-xl border border-base-200">
+        <div class="card-body p-4 sm:p-6">
+          <div class="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-base-200">
+            <span class="text-sm font-semibold text-base-content/80">
+              💡 <strong>Instructions:</strong> Drag or click to order caps 1–15 by hue starting from the Pilot (Cap #0).
+            </span>
+            <div class="flex items-center gap-2">
+              <label for="select-d15-preset" class="sr-only">Clinical Preset</label>
+              <select id="select-d15-preset" class="select select-bordered select-sm text-xs font-bold" title="Load an archetype clinical ordering">
+                <option value="user">My Arrangement</option>
+                <option value="normal">Normal Trichromat (1–15)</option>
+                <option value="protan">Protanope Archetype (Red-Blind)</option>
+                <option value="deutan">Deuteranope Archetype (Green-Blind)</option>
+                <option value="tritan">Tritanope Archetype (Blue-Yellow)</option>
+                <option value="scramble">Random Scramble</option>
+              </select>
+              <button id="btn-d15-shuffle" class="btn btn-outline btn-sm font-bold">Shuffle</button>
+              <button id="btn-d15-reset" class="btn btn-outline btn-sm font-bold">Reset</button>
+            </div>
+          </div>
+
+          <!-- Mobile Cap Reorder Action Bar -->
+          <div id="d15-mobile-reorder-bar" class="hidden alert alert-info shadow-lg py-2.5 px-3 my-3 flex items-center justify-between flex-wrap gap-2 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="badge badge-primary font-mono font-bold text-xs" id="d15-selected-cap-badge">Cap --</span>
+              <span class="font-semibold">Selected. Tap another cap to swap, or move:</span>
+            </div>
+            <div class="flex items-center gap-1.5 ml-auto">
+              <button id="btn-cap-move-left" class="btn btn-xs btn-neutral font-bold gap-1">◀ Left</button>
+              <button id="btn-cap-move-right" class="btn btn-xs btn-neutral font-bold gap-1">Right ▶</button>
+              <button id="btn-cap-deselect" class="btn btn-xs btn-ghost btn-circle font-bold" title="Deselect">&times;</button>
+            </div>
+          </div>
+
+          <!-- Arrangement Rack (Target Slots) -->
+          <div class="mt-4">
+            <div class="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Sequence Rack (Beginning with Pilot):</div>
+            <div class="d15-rack flex items-center gap-2 p-3 bg-base-200 rounded-xl border-2 border-dashed border-base-300 overflow-x-auto min-h-[92px]" id="d15-arrangement-rack" role="list" aria-label="Arranged color caps sequence">
+              <!-- Pilot Cap 0 is fixed -->
+              <div class="d15-cap fixed-pilot shrink-0 rounded-lg p-1.5 flex flex-col items-center justify-between shadow border-2 border-primary bg-base-100 w-12 h-18 cursor-not-allowed" id="cap-pilot" data-cap="0" role="listitem" aria-label="Reference Pilot Cap 0">
+                <div class="w-full h-10 rounded shadow-inner" style="background-color: #3488a5;"></div>
+                <div class="text-[10px] font-bold font-mono text-base-content/70">0 (Pilot)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Unsorted / Fast Selector Tray -->
+          <div class="mt-4">
+            <div class="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Quick Swap / Unsorted Tray (Tap to select and swap):</div>
+            <div class="flex items-center gap-2 p-3 bg-base-200 rounded-xl border border-base-300 overflow-x-auto min-h-[92px]" id="d15-cap-tray" role="list" aria-label="Movable color caps tray"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-time Polar Graph & VKS Metrics -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <!-- SVG Polar Web Chart -->
+        <div class="card bg-base-100 shadow-xl border border-base-200">
+          <div class="card-body p-4 sm:p-6">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="card-title text-base font-bold">Polar Confusion Vector Web</h3>
+              <span class="badge badge-neutral text-xs font-mono">CIE 1976 UCS Space</span>
+            </div>
+
+            <div class="w-full max-w-[360px] aspect-square mx-auto relative my-2">
+              <svg id="d15-polar-svg" viewBox="0 0 420 420" width="100%" height="100%" aria-label="Farnsworth D-15 polar arrangement diagram">
+                <circle cx="210" cy="210" r="160" fill="none" stroke="currentColor" stroke-opacity="0.15" stroke-width="1.5" stroke-dasharray="4,4"/>
+                <circle cx="210" cy="210" r="110" fill="none" stroke="currentColor" stroke-opacity="0.15" stroke-width="1" stroke-dasharray="2,2"/>
+                <circle cx="210" cy="210" r="60" fill="none" stroke="currentColor" stroke-opacity="0.15" stroke-width="1" stroke-dasharray="2,2"/>
+
+                <!-- Theoretical Confusion Axes -->
+                <!-- Protan (approx +1.4 deg) -->
+                <line x1="50" y1="210" x2="370" y2="210" stroke="#ef4444" stroke-opacity="0.5" stroke-width="2" stroke-dasharray="6,3"/>
+                <text x="375" y="214" font-size="11" fill="#ef4444" font-weight="700">Protan</text>
+
+                <!-- Deutan (approx -61.5 deg) -->
+                <line x1="130" y1="350" x2="290" y2="70" stroke="#10b981" stroke-opacity="0.5" stroke-width="2" stroke-dasharray="6,3"/>
+                <text x="295" y="66" font-size="11" fill="#10b981" font-weight="700">Deutan</text>
+
+                <!-- Tritan (approx +86.5 deg) -->
+                <line x1="210" y1="50" x2="210" y2="370" stroke="#3b82f6" stroke-opacity="0.5" stroke-width="2" stroke-dasharray="6,3"/>
+                <text x="214" y="44" font-size="11" fill="#3b82f6" font-weight="700">Tritan</text>
+
+                <!-- Dynamic Vector Paths & Cap Nodes -->
+                <g id="svg-vector-paths"></g>
+                <g id="svg-major-axis"></g>
+                <g id="svg-cap-nodes"></g>
+              </svg>
+            </div>
+
+            <div class="flex items-center justify-center gap-4 text-xs font-semibold text-base-content/70 flex-wrap">
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-protan"></span> Protan Axis</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-deutan"></span> Deutan Axis</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-tritan"></span> Tritan Axis</span>
+              <span class="flex items-center gap-1.5"><span class="w-4 h-0.5 bg-base-content"></span> Your Sequence</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Moment of Inertia Quantitative Parameters -->
+        <div class="card bg-base-100 shadow-xl border border-base-200">
+          <div class="card-body p-4 sm:p-6">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="card-title text-base font-bold">Vingrys & King-Smith (1988) Parameters</h3>
+              <span id="d15-status-pill" class="badge badge-success font-bold text-xs">Normal Alignment</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-base-200 p-3 rounded-xl border border-base-300">
+                <span class="text-xs uppercase font-bold text-base-content/60 block">Confusion Index ($C$-Index)</span>
+                <span class="text-2xl font-black font-mono text-primary" id="metric-c-index">1.00</span>
+                <span class="text-[11px] text-base-content/60 block mt-0.5">Normal: &lt; 1.25 • Severity</span>
+                <progress id="bar-c-index" class="progress progress-primary w-full mt-2" value="20" max="100"></progress>
+              </div>
+
+              <div class="bg-base-200 p-3 rounded-xl border border-base-300">
+                <span class="text-xs uppercase font-bold text-base-content/60 block">Selectivity Index ($S$-Index)</span>
+                <span class="text-2xl font-black font-mono text-primary" id="metric-s-index">1.16</span>
+                <span class="text-[11px] text-base-content/60 block mt-0.5">Polarity: &gt; 1.65 (Congenital)</span>
+                <progress id="bar-s-index" class="progress progress-secondary w-full mt-2" value="25" max="100"></progress>
+              </div>
+
+              <div class="bg-base-200 p-3 rounded-xl border border-base-300">
+                <span class="text-xs uppercase font-bold text-base-content/60 block">Confusion Angle ($\theta$)</span>
+                <span class="text-2xl font-black font-mono text-primary" id="metric-angle">+14.6°</span>
+                <span class="text-[11px] text-base-content/60 block mt-0.5">P: ~1° • D: ~-62° • T: ~87°</span>
+                <div class="metric-angle-compass mt-2" id="angle-compass-needle" style="transform: rotate(14.6deg);"></div>
+              </div>
+
+              <div class="bg-base-200 p-3 rounded-xl border border-base-300">
+                <span class="text-xs uppercase font-bold text-base-content/60 block">Difference Vector Distance</span>
+                <span class="text-2xl font-black font-mono text-primary" id="metric-distance">0.226</span>
+                <span class="text-[11px] text-base-content/60 block mt-0.5">CIE $u', v'$ coordinate sum</span>
+              </div>
+            </div>
+
+            <!-- Preliminary D-15 Verdict Box -->
+            <div class="alert alert-success shadow-sm py-3 px-4 mt-4">
+              <div>
+                <div class="flex items-center justify-between">
+                  <strong class="font-bold text-xs uppercase tracking-wide">Preliminary D-15 Diagnosis:</strong>
+                  <span id="d15-classification-badge" class="badge badge-success font-bold text-xs">Normal Trichromat</span>
+                </div>
+                <p id="d15-clinical-rationale" class="text-xs mt-1 opacity-90">Cap sequence reflects a circular progression without major diameter crossings. S-index is below 1.40.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Module Navigation Bar -->
+      <div class="card bg-base-100 shadow-md border border-base-200 mt-6 p-4 flex flex-row items-center justify-between">
+        <button class="btn btn-outline btn-sm font-bold" data-prev="module-plates">⬅ Back</button>
+        <span class="text-xs text-base-content/70 font-semibold">Arrange all 15 caps before proceeding.</span>
+        <button class="btn btn-primary btn-sm font-bold" id="btn-finish-d15" data-next="module-cad">Proceed to CAD Test ➡</button>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- MODULE 4: Computerized CAD / Cambridge Adaptive Trivector Test -->
+    <!-- ================================================================= -->
+    <section id="module-cad" class="diagnostic-module">
+      <div class="mb-6">
+        <div class="badge badge-accent font-bold mb-2 uppercase tracking-wide">Battery 4 of 4 • Dynamic Threshold Staircase</div>
+        <h2 class="text-3xl font-black tracking-tight text-base-content">Computerized CAD / Cambridge Adaptive Trivector Test</h2>
+        <p class="text-base text-base-content/70 mt-1 max-w-2xl">Modeled on the City University London <strong>CAD test</strong> and the <strong>Cambridge Colour Test</strong>. Evaluates isoluminant chromatic contrast thresholds inside an active 60 FPS dynamic luminance noise mask using a 4-Alternative Forced Choice (4-AFC) psychometric staircase.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <!-- Canvas Viewport Card (7 Cols) -->
+        <div class="card bg-base-100 shadow-xl border border-base-200 lg:col-span-7">
+          <div class="card-body p-4 sm:p-6">
+            <div class="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-base-200">
+              <div class="flex items-center gap-2">
+                <span id="cad-current-vector-badge" class="badge badge-error font-bold text-xs">Testing: Protan Axis (L-Cone)</span>
+                <span id="cad-staircase-step" class="badge badge-neutral text-xs font-mono font-bold">Reversal 1 of 6</span>
+              </div>
+              <span class="text-xs font-semibold text-base-content/70">Contrast: <strong id="cad-contrast-value" class="text-primary font-mono text-sm">100%</strong></span>
+            </div>
+
+            <div class="flex items-center justify-center p-4 bg-[#7a7a7a] rounded-2xl my-2 relative overflow-hidden">
+              <canvas id="cad-canvas" width="460" height="460" class="rounded-xl shadow-2xl max-w-full h-auto" role="img" aria-label="Dynamic luminance noise field with Landolt C target"></canvas>
+              <div id="cad-flash-overlay" class="cad-feedback-overlay"></div>
+            </div>
+
+            <p class="text-xs text-center text-base-content/60">Identify the gap orientation of the colored Landolt-C ring (Up, Right, Down, or Left).</p>
+          </div>
+        </div>
+
+        <!-- 4-AFC D-Pad & Convergence Card (5 Cols) -->
+        <div class="card bg-base-100 shadow-xl border border-base-200 lg:col-span-5">
+          <div class="card-body p-4 sm:p-6">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="card-title text-base font-bold">4-AFC Directional Input</h3>
+              <span class="badge badge-info text-xs font-semibold">Arrow Keys Enabled</span>
+            </div>
+
+            <!-- Directional 4AFC Buttons (D-Pad) -->
+            <div class="flex flex-col items-center gap-2 my-2" role="group" aria-label="Directional 4AFC input buttons">
+              <button class="btn btn-outline btn-md w-28 font-bold gap-2 dpad-btn" data-dir="up" id="btn-cad-up" aria-label="Gap Facing Up">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                <span>UP (↑)</span>
+              </button>
+              <div class="flex items-center gap-3">
+                <button class="btn btn-outline btn-md w-28 font-bold gap-2 dpad-btn" data-dir="left" id="btn-cad-left" aria-label="Gap Facing Left">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  <span>LEFT (←)</span>
+                </button>
+                <div class="w-10 h-10 flex items-center justify-center text-base-content/40" title="Landolt-C Ring Indicator">
+                  <svg viewBox="0 0 36 36" width="30" height="30">
+                    <circle cx="18" cy="18" r="14" fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="72 20" transform="rotate(-90 18 18)"/>
+                  </svg>
+                </div>
+                <button class="btn btn-outline btn-md w-28 font-bold gap-2 dpad-btn" data-dir="right" id="btn-cad-right" aria-label="Gap Facing Right">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  <span>RIGHT (→)</span>
+                </button>
+              </div>
+              <button class="btn btn-outline btn-md w-28 font-bold gap-2 dpad-btn" data-dir="down" id="btn-cad-down" aria-label="Gap Facing Down">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+                <span>DOWN (↓)</span>
+              </button>
+            </div>
+
+            <!-- Dynamic Staircase History Canvas -->
+            <div class="bg-base-200 p-3 rounded-xl border border-base-300 mt-4">
+              <div class="flex items-center justify-between text-xs font-bold mb-2">
+                <span>Staircase Convergence:</span>
+                <span class="text-base-content/60">1-up / 2-down rule</span>
+              </div>
+              <canvas id="cad-staircase-canvas" width="380" height="110" class="w-full h-auto rounded bg-base-100" role="img" aria-label="Staircase convergence chart"></canvas>
+            </div>
+
+            <!-- Trivector Threshold Gauges -->
+            <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+              <div class="bg-base-200 p-2.5 rounded-xl border border-base-300" id="vbox-protan">
+                <span class="text-[10px] font-bold uppercase text-protan block">Protan (L)</span>
+                <span class="text-base font-black font-mono my-0.5 block" id="cad-thresh-protan">-- CAD</span>
+                <progress id="cad-bar-protan" class="progress progress-error w-full h-1.5" value="0" max="100"></progress>
+                <span class="vbox-status text-[10px] text-base-content/60 block mt-1">Pending</span>
+              </div>
+
+              <div class="bg-base-200 p-2.5 rounded-xl border border-base-300" id="vbox-deutan">
+                <span class="text-[10px] font-bold uppercase text-deutan block">Deutan (M)</span>
+                <span class="text-base font-black font-mono my-0.5 block" id="cad-thresh-deutan">-- CAD</span>
+                <progress id="cad-bar-deutan" class="progress progress-success w-full h-1.5" value="0" max="100"></progress>
+                <span class="vbox-status text-[10px] text-base-content/60 block mt-1">Pending</span>
+              </div>
+
+              <div class="bg-base-200 p-2.5 rounded-xl border border-base-300" id="vbox-tritan">
+                <span class="text-[10px] font-bold uppercase text-tritan block">Tritan (S)</span>
+                <span class="text-base font-black font-mono my-0.5 block" id="cad-thresh-tritan">-- CAD</span>
+                <progress id="cad-bar-tritan" class="progress progress-info w-full h-1.5" value="0" max="100"></progress>
+                <span class="vbox-status text-[10px] text-base-content/60 block mt-1">Pending</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Module Navigation Bar -->
+      <div class="card bg-base-100 shadow-md border border-base-200 mt-6 p-4 flex flex-row items-center justify-between">
+        <button class="btn btn-outline btn-sm font-bold" data-prev="module-d15">⬅ Back</button>
+        <span class="text-xs text-base-content/70 font-semibold" id="cad-progress-status-text">Complete all 3 cone axes or proceed to report.</span>
+        <button class="btn btn-primary btn-sm font-bold" id="btn-finish-cad" data-next="module-results">Generate Full Report ➡</button>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- MODULE 5: Clinical Report & Machado Vision Simulator -->
+    <!-- ================================================================= -->
+    <section id="module-results" class="diagnostic-module">
+      <div class="mb-6">
+        <div class="badge badge-success font-bold mb-2 uppercase tracking-wide">Multi-Battery Clinical Synthesis</div>
+        <h2 class="text-3xl font-black tracking-tight text-base-content">Clinical Diagnostic Evaluation & Simulator</h2>
+        <p class="text-base text-base-content/70 mt-1 max-w-2xl">Synthesized classification cross-validated across Dynamic Plates, Farnsworth D-15 Moment of Inertia, and CAD Trivector thresholds.</p>
+      </div>
+
+      <!-- Medical Diagnostic Summary Card -->
+      <div class="card bg-base-100 shadow-xl border border-base-200">
+        <div class="card-body p-6 sm:p-8">
+          <div class="flex items-start justify-between flex-wrap gap-6">
+            <div class="max-w-xl">
+              <span class="text-xs font-bold uppercase tracking-wider text-base-content/60">Primary Clinical Classification</span>
+              <h3 class="text-3xl sm:text-4xl font-black text-base-content tracking-tight mt-1 mb-2" id="report-primary-diagnosis">Normal Trichromacy</h3>
+              <p class="text-sm text-base-content/80 leading-relaxed" id="report-diagnosis-explanation">All three retinal cone photopigments (L, M, S) exhibit normal spectral sensitivity and balanced chromatic discrimination thresholds across standard axes.</p>
+            </div>
+
+            <!-- Clinical Key Stats Badges (DaisyUI Stats) -->
+            <div class="stats stats-vertical sm:stats-horizontal shadow bg-base-200 border border-base-300">
+              <div class="stat py-3 px-4">
+                <div class="stat-title text-xs font-bold uppercase">Severity</div>
+                <div class="stat-value text-xl font-mono text-success" id="report-severity">Normal</div>
+              </div>
+              <div class="stat py-3 px-4">
+                <div class="stat-title text-xs font-bold uppercase">Confidence</div>
+                <div class="stat-value text-xl font-mono text-primary" id="report-confidence">98%</div>
+              </div>
+              <div class="stat py-3 px-4">
+                <div class="stat-title text-xs font-bold uppercase">FAA Flight</div>
+                <div class="stat-value text-xl font-mono text-success" id="report-faa-status">Eligible</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider my-6"></div>
+
+          <!-- Photoreceptor Cone Health Profile -->
+          <div>
+            <h4 class="text-base font-bold text-base-content mb-3">Photoreceptor Retinal Cone Functional Sensitivity</h4>
+            <div class="space-y-3">
+              <div>
+                <div class="flex items-center justify-between text-xs font-bold mb-1">
+                  <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-protan"></span> L-Cone (Erythrolabe / Long Wavelength - 564 nm)</span>
+                  <span class="font-mono" id="report-l-cone-pct">98%</span>
+                </div>
+                <progress id="report-l-cone-bar" class="progress progress-error w-full h-2.5" value="98" max="100"></progress>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between text-xs font-bold mb-1">
+                  <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-deutan"></span> M-Cone (Chlorolabe / Medium Wavelength - 534 nm)</span>
+                  <span class="font-mono" id="report-m-cone-pct">97%</span>
+                </div>
+                <progress id="report-m-cone-bar" class="progress progress-success w-full h-2.5" value="97" max="100"></progress>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between text-xs font-bold mb-1">
+                  <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-tritan"></span> S-Cone (Cyanolabe / Short Wavelength - 420 nm)</span>
+                  <span class="font-mono" id="report-s-cone-pct">99%</span>
+                </div>
+                <progress id="report-s-cone-bar" class="progress progress-info w-full h-2.5" value="99" max="100"></progress>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider my-6"></div>
+
+          <!-- Multi-Battery Breakdown Table -->
+          <div>
+            <h4 class="text-base font-bold text-base-content mb-3">Multi-Battery Evidence Breakdown</h4>
+            <div class="overflow-x-auto">
+              <table class="table table-zebra w-full text-sm">
+                <thead>
+                  <tr class="bg-base-200 text-xs uppercase font-bold text-base-content/70">
+                    <th>Diagnostic Battery</th>
+                    <th>Clinical Scope</th>
+                    <th>Key Quantitative Score</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="font-bold">Dynamic HRR/Ishihara Plates</td>
+                    <td>Foveal Red-Green & Blue-Yellow Screening</td>
+                    <td id="table-plates-metric" class="font-mono">8 of 8 Correct (0 errors)</td>
+                    <td><span class="badge badge-success font-bold text-xs" id="table-plates-badge">Pass</span></td>
+                  </tr>
+                  <tr>
+                    <td class="font-bold">Farnsworth D-15 (VKS '88)</td>
+                    <td>Quantitative Moment of Inertia</td>
+                    <td id="table-d15-metric" class="font-mono">C-Index: 1.00 • S-Index: 1.16 • Angle: 14.6°</td>
+                    <td><span class="badge badge-success font-bold text-xs" id="table-d15-badge">Normal</span></td>
+                  </tr>
+                  <tr>
+                    <td class="font-bold">CAD Adaptive Trivector</td>
+                    <td>Isoluminant Cone Contrast Staircase</td>
+                    <td id="table-cad-metric" class="font-mono">Protan: 0.9 CAD • Deutan: 0.9 CAD • Tritan: 1.0 CAD</td>
+                    <td><span class="badge badge-success font-bold text-xs" id="table-cad-badge">Within Limits</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="divider my-6"></div>
+
+          <!-- Occupational Suitability Guide -->
+          <div>
+            <h4 class="text-base font-bold text-base-content mb-3">Occupational Suitability Guidance</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="bg-base-200 p-4 rounded-xl border border-base-300">
+                <span class="text-2xl mb-1 block">✈️</span>
+                <strong class="font-bold text-sm block">Aviation (FAA 2025/2026)</strong>
+                <p class="text-xs text-base-content/70 mt-1" id="report-occ-aviation">Demonstrates unrestricted chromatic sensitivity under computerized color vision testing criteria. Meets FAA Class 1, 2, and 3 medical certification without daylight-only flight restriction.</p>
+              </div>
+
+              <div class="bg-base-200 p-4 rounded-xl border border-base-300">
+                <span class="text-2xl mb-1 block">🚢</span>
+                <strong class="font-bold text-sm block">Maritime Navigation (STCW)</strong>
+                <p class="text-xs text-base-content/70 mt-1" id="report-occ-maritime">Full safety clearance for marine watchstanding and reliable port/starboard navigation light recognition under standard night maritime conditions.</p>
+              </div>
+
+              <div class="bg-base-200 p-4 rounded-xl border border-base-300">
+                <span class="text-2xl mb-1 block">⚡</span>
+                <strong class="font-bold text-sm block">Electrical Engineering</strong>
+                <p class="text-xs text-base-content/70 mt-1" id="report-occ-electrical">Full discrimination capability for standard IEC 60757 resistor color-coding bands and complex wiring harnesses.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================= -->
+      <!-- Interactive Machado LMS Spectral Vision Simulator -->
+      <!-- ============================================================= -->
+      <div class="card bg-base-100 shadow-xl border border-base-200 mt-6">
+        <div class="card-body p-6 sm:p-8">
+          <div class="flex items-center justify-between flex-wrap gap-4 pb-4 border-b border-base-200">
+            <div>
+              <h3 class="card-title text-xl font-bold">Machado LMS Spectral Vision Simulator</h3>
+              <p class="text-xs text-base-content/70 mt-0.5">Physiologically modeled cone-space absorption simulation (Machado et al. 2009 / Viénot et al. 1999).</p>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+              <div class="flex items-center gap-1.5">
+                <label for="select-sim-scene" class="text-xs font-bold">Scene:</label>
+                <select id="select-sim-scene" class="select select-bordered select-sm text-xs font-bold">
+                  <option value="traffic">Traffic Signals (Safety)</option>
+                  <option value="plate">Ishihara Dot Plate</option>
+                  <option value="fruit">Fruit Ripeness</option>
+                  <option value="landscape">Autumn Scenery</option>
+                </select>
+              </div>
+
+              <div class="flex items-center gap-1.5">
+                <label for="select-sim-type" class="text-xs font-bold">Defect:</label>
+                <select id="select-sim-type" class="select select-bordered select-sm text-xs font-bold">
+                  <option value="auto">Auto (Match Diagnosis)</option>
+                  <option value="protanopia">Protanopia (Red-Blind)</option>
+                  <option value="deuteranopia">Deuteranopia (Green-Blind)</option>
+                  <option value="tritanopia">Tritanopia (Blue-Yellow)</option>
+                  <option value="achromatopsia">Achromatopsia (Monochromat)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Split-View Comparison Slider Viewport -->
+          <div class="simulator-viewport my-4 relative rounded-2xl overflow-hidden shadow-2xl border border-base-300 max-w-[760px] h-[360px] sm:h-[420px] mx-auto select-none" id="sim-viewport">
+            <canvas id="sim-canvas-filtered" width="760" height="420" class="sim-canvas-layer w-full h-full object-cover"></canvas>
+            
+            <div class="sim-clip-wrapper absolute inset-y-0 left-0 w-1/2 overflow-hidden border-r-2 border-white shadow-xl" id="sim-clip-container">
+              <canvas id="sim-canvas-normal" width="760" height="420" class="sim-canvas-layer w-[760px] max-w-none h-full object-cover"></canvas>
+            </div>
+
+            <!-- Grab Handle -->
+            <div class="sim-slider-handle absolute inset-y-0 left-1/2 -ml-5 w-10 flex items-center justify-center cursor-ew-resize z-20" id="sim-slider-divider" role="slider" aria-label="Comparison split slider" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100" tabindex="0">
+              <div class="w-8 h-8 rounded-full bg-white shadow-lg text-slate-800 flex items-center justify-center font-bold">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 8L22 12L18 16M6 8L2 12L6 16"/></svg>
+              </div>
+            </div>
+
+            <!-- Corner Labels -->
+            <div class="badge badge-neutral absolute bottom-3 left-3 z-10 text-xs font-bold opacity-85 pointer-events-none">Normal Vision</div>
+            <div class="badge badge-neutral absolute bottom-3 right-3 z-10 text-xs font-bold opacity-85 pointer-events-none" id="sim-current-label">Simulated: Match Diagnosis</div>
+          </div>
+
+          <!-- Severity Slider -->
+          <div class="max-w-md mx-auto mt-4 text-center">
+            <label for="slider-sim-severity" class="text-xs font-bold text-base-content/80 block mb-1">
+              Deficiency Severity: <span id="sim-severity-val" class="font-mono text-primary font-black">100% (Complete Dichromat)</span>
+            </label>
+            <input type="range" id="slider-sim-severity" min="10" max="100" value="100" step="5" class="range range-primary range-sm">
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons Bar -->
+      <div class="card bg-base-100 shadow-md border border-base-200 mt-6 p-6 no-print">
+        <div class="flex items-center justify-center flex-wrap gap-3">
+          <button id="btn-print-report" class="btn btn-primary font-bold gap-2">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print Medical Report / Save PDF
+          </button>
+          <button id="btn-export-json" class="btn btn-outline font-bold gap-2">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export JSON
+          </button>
+          <button id="btn-copy-summary" class="btn btn-outline font-bold gap-2">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy Summary
+          </button>
+          <button id="btn-restart-battery" class="btn btn-ghost font-bold gap-2">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Retest Suite
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Clean Footer -->
+  <footer class="footer footer-center p-6 bg-base-100 text-base-content/70 border-t border-base-200 mt-12 text-xs">
+    <aside class="max-w-2xl">
+      <p class="font-semibold">
+        <strong>ChromaClear Color Vision Suite</strong> • Developed in accordance with CIE 1976 UCS standards, Vingrys & King-Smith (1988) Moment of Inertia analysis, City University CAD principles (Barbur et al.), and Machado et al. (2009) LMS cone simulation matrices.
+      </p>
+      <p class="opacity-75 mt-1">
+        Disclaimer: This application provides quantitative modeling for educational and pre-clinical assessment. Official occupational certification must be conducted by a licensed optometrist or ophthalmologist with calibrated institutional instrumentation.
+      </p>
+    </aside>
+  </footer>
+
+  <!-- Core Color Science Engine -->
+  <script src="./app.js"></script>
+</body>
+</html>

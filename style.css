@@ -1,0 +1,232 @@
+/* ==========================================================================
+   ChromaClear | Companion Stylesheet for DaisyUI + Custom Visualizations
+   ========================================================================== */
+
+/* Active Diagnostic Module Visibility */
+.diagnostic-module {
+  display: none;
+}
+
+.diagnostic-module.active {
+  display: block;
+  animation: moduleFadeIn 0.25s ease-out;
+}
+
+@keyframes moduleFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Screen-reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ==========================================================================
+   D-15 Cap Styling & Drag States
+   ========================================================================== */
+.d15-cap {
+  flex-shrink: 0;
+  width: 48px;
+  height: 72px;
+  border-radius: 8px;
+  cursor: grab;
+  user-select: none;
+  touch-action: manipulation;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, outline 0.15s ease;
+}
+
+.d15-cap:hover {
+  transform: translateY(-2px);
+}
+
+.d15-cap.dragging {
+  opacity: 0.35;
+  cursor: grabbing;
+}
+
+.d15-cap.selected {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+  transform: translateY(-4px) scale(1.05);
+}
+
+.d15-cap.fixed-pilot {
+  cursor: not-allowed;
+}
+
+/* D-15 Angle Compass Needle */
+.metric-angle-compass {
+  width: 100%;
+  height: 8px;
+  position: relative;
+  background: linear-gradient(to right, #ef4444 0%, #10b981 50%, #3b82f6 100%);
+  border-radius: 9999px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.metric-angle-compass::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 16px;
+  background-color: #0f172a;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* ==========================================================================
+   CAD Adaptive Test Feedback Flash
+   ========================================================================== */
+.cad-feedback-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 12px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.cad-feedback-overlay.correct {
+  background-color: rgba(34, 197, 94, 0.25);
+  opacity: 1;
+}
+
+.cad-feedback-overlay.incorrect {
+  background-color: rgba(239, 68, 68, 0.28);
+  opacity: 1;
+}
+
+/* ==========================================================================
+   Machado LMS Vision Simulator Viewport & Slider Handle
+   ========================================================================== */
+.simulator-viewport {
+  touch-action: pan-y;
+}
+
+.sim-canvas-layer {
+  pointer-events: none;
+}
+
+.sim-slider-handle {
+  transition: transform 0.05s linear;
+}
+
+.sim-slider-handle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 4px;
+}
+
+/* Progress dots for plates */
+.progress-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background-color: rgba(148, 163, 184, 0.4);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.progress-dot.active {
+  background-color: #2563eb;
+  transform: scale(1.3);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}
+
+.progress-dot.correct {
+  background-color: #10b981;
+}
+
+.progress-dot.incorrect {
+  background-color: #ef4444;
+}
+
+/* ==========================================================================
+   PRINT STYLESHEET (@media print)
+   Optimized for Medical Diagnostic Records & PDF Export
+   ========================================================================== */
+/* Touch-friendly rack scrolling */
+#d15-arrangement-rack,
+#d15-cap-tray {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  header,
+  #alert-banner,
+  .no-print,
+  .btn,
+  .dropdown,
+  #btn-audio-toggle,
+  #btn-theme-toggle,
+  footer,
+  .simulator-card,
+  #select-d15-preset,
+  #btn-d15-shuffle,
+  #btn-d15-reset,
+  #d15-cap-tray,
+  #d15-mobile-reorder-bar,
+  .sticky,
+  #toggle-dynamic-noise,
+  .keypad-grid,
+  .input-display-box,
+  .dpad-container {
+    display: none !important;
+  }
+
+  .diagnostic-module {
+    display: none !important;
+  }
+
+  #module-results {
+    display: block !important;
+  }
+
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+    break-inside: avoid;
+    margin-bottom: 1rem !important;
+  }
+
+  .stats {
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  table {
+    border-collapse: collapse !important;
+  }
+
+  th, td {
+    border-bottom: 1px solid #e2e8f0 !important;
+  }
+}
