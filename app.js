@@ -1,6 +1,6 @@
 /**
  * ChromaClear | Clinical & Occupational Color Vision Diagnostic Suite
- * Peer-Reviewed Vision Science & Colorimetry Engine (DaisyUI Edition)
+ * Peer-Reviewed Vision Science & Colorimetry Engine
  * 
  * Implementations:
  * 1. CIE 1976 UCS (u', v') Colorimetry & Vingrys & King-Smith (1988) Moment of Inertia
@@ -36,11 +36,11 @@ const D15_CAPS = [
   { cap: 15, munsell: '5P 5/4',   u: 0.184, v: 0.434, hex: '#608ab6', name: 'Cap 15' }
 ];
 
-// Reference Archetype Orders for D-15 (Bowman 1982 & Vingrys 1988)
+// Reference Archetype Orders for D-15
 const D15_ARCHETYPES = {
   normal: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-  protan: [1, 10, 9, 2, 3, 8, 7, 4, 5, 6, 11, 12, 13, 14, 15],
-  deutan: [1, 15, 2, 14, 3, 13, 4, 12, 5, 11, 6, 10, 7, 9, 8],
+  protan: [15, 1, 14, 2, 13, 3, 12, 4, 11, 5, 10, 6, 9, 7, 8],
+  deutan: [1, 15, 2, 14, 3, 13, 12, 4, 11, 5, 10, 6, 9, 8, 7],
   tritan: [1, 2, 3, 4, 15, 14, 13, 5, 6, 7, 12, 11, 10, 9, 8],
   scramble: [7, 2, 14, 5, 11, 3, 9, 1, 15, 8, 4, 12, 6, 13, 10]
 };
@@ -53,7 +53,7 @@ const PLATES_DATA = [
     digit: '12',
     fgColor: '#ef4444',
     bgColor: '#94a3b8',
-    luminanceContrast: 0.45,
+    luminanceContrast: 0.45, // High luminance difference visible even to monochromats
     type: 'demo',
     intent: 'Tests comprehension & visual acuity. Visible to all trichromats, dichromats, and monochromats.'
   },
@@ -61,9 +61,9 @@ const PLATES_DATA = [
     id: 2,
     category: 'Red-Green Screening (L/M Cones)',
     digit: '74',
-    fgColor: '#22c55e',
-    bgColor: '#ea580c',
-    luminanceContrast: 0.0,
+    fgColor: '#22c55e', // Green dots
+    bgColor: '#ea580c', // Orange/Red dots
+    luminanceContrast: 0.0, // Strictly isoluminant with DLCN
     type: 'rg_screen',
     intent: 'Probes L-M opponent pathway. Normal trichromats see "74"; protan/deutan observers struggle or see nothing.'
   },
@@ -71,8 +71,8 @@ const PLATES_DATA = [
     id: 3,
     category: 'Blue-Yellow (Tritan) Screening (S-Cone)',
     digit: '16',
-    fgColor: '#3b82f6',
-    bgColor: '#eab308',
+    fgColor: '#3b82f6', // Violet/Blue
+    bgColor: '#eab308', // Amber/Yellow
     luminanceContrast: 0.0,
     type: 'tritan_screen',
     intent: 'S-cone pathway screening. Fixes Ishihara’s inability to detect tritanopia and acquired S-cone damage.'
@@ -191,7 +191,12 @@ const sound = new SoundEffects();
 // 3. COLOR CONVERSION & SIMULATION MATHEMATICS
 // ============================================================================
 
+/**
+ * Machado et al. (2009) / Viénot LMS Cone Transformation
+ * Physiologically accurate simulation of dichromacy and anomalous trichromacy
+ */
 const CVD = {
+  // Convert Hex string to RGB [0-255]
   hexToRgb(hex) {
     let c = hex.replace('#', '');
     if (c.length === 3) c = c.split('').map(x => x + x).join('');
@@ -199,17 +204,20 @@ const CVD = {
     return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
   },
 
+  // sRGB gamma expansion: [0-255] -> linear [0-1]
   sRgbToLinear(c) {
     const v = c / 255;
     return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
   },
 
+  // Linear [0-1] -> sRGB gamma compression [0-255]
   linearToSRgb(v) {
     const clamped = Math.max(0, Math.min(1, v));
     const c = clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
     return Math.round(c * 255);
   },
 
+  // Linear RGB to LMS Cone Coordinates
   rgbToLms(r, g, b) {
     return [
       0.313990 * r + 0.639512 * g + 0.046497 * b,
@@ -218,6 +226,7 @@ const CVD = {
     ];
   },
 
+  // LMS Cone Coordinates to Linear RGB
   lmsToRgb(L, M, S) {
     return [
        5.472212 * L - 4.641960 * M + 0.169637 * S,
@@ -226,10 +235,12 @@ const CVD = {
     ];
   },
 
+  // Simulate deficient color given type and severity (0.0 to 1.0)
   simulatePixel(r, g, b, type, severity = 1.0) {
     if (type === 'normal' || severity <= 0) return [r, g, b];
 
     if (type === 'achromatopsia') {
+      // Rod monochromacy: Rec. 709 Luminance
       const y = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
       const s = severity;
       return [
@@ -247,12 +258,15 @@ const CVD = {
     let simL = L, simM = M, simS = S;
 
     if (type === 'protanopia' || type === 'protan') {
+      // Missing L-cone: replaced by linear combination of M and S
       const L_loss = 1.05118297 * M - 0.05118297 * S;
       simL = (1 - severity) * L + severity * L_loss;
     } else if (type === 'deuteranopia' || type === 'deutan') {
+      // Missing M-cone: replaced by linear combination of L and S
       const M_loss = 0.9513092 * L + 0.04866992 * S;
       simM = (1 - severity) * M + severity * M_loss;
     } else if (type === 'tritanopia' || type === 'tritan') {
+      // Missing S-cone: replaced by linear combination of L and M
       const S_loss = -0.86744736 * L + 1.86727089 * M;
       simS = (1 - severity) * S + severity * S_loss;
     }
@@ -263,7 +277,7 @@ const CVD = {
 };
 
 // ============================================================================
-// 4. NAVIGATION & DAISYUI THEME CONTROLLER
+// 4. MODULE 1: CALIBRATION & NAVIGATION CONTROLLER
 // ============================================================================
 const AppNav = {
   currentModule: 'module-calibration',
@@ -276,8 +290,30 @@ const AppNav = {
   ],
 
   init() {
-    // DaisyUI Steps Navigation
-    document.querySelectorAll('.nav-step, .nav-link').forEach(btn => {
+    // Mobile Header Prev / Next buttons
+    const mobileBtnPrev = document.getElementById('mobile-btn-prev');
+    if (mobileBtnPrev) {
+      mobileBtnPrev.addEventListener('click', () => {
+        const idx = this.modules.indexOf(this.currentModule);
+        if (idx > 0) {
+          sound.click();
+          this.switchModule(this.modules[idx - 1]);
+        }
+      });
+    }
+
+    const mobileBtnNext = document.getElementById('mobile-btn-next');
+    if (mobileBtnNext) {
+      mobileBtnNext.addEventListener('click', () => {
+        const idx = this.modules.indexOf(this.currentModule);
+        if (idx < this.modules.length - 1) {
+          sound.click();
+          this.switchModule(this.modules[idx + 1]);
+        }
+      });
+    }
+    // Navigation buttons
+    document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const target = e.currentTarget.getAttribute('data-target');
         this.switchModule(target);
@@ -307,29 +343,6 @@ const AppNav = {
       });
     });
 
-    // Mobile Header Prev / Next buttons
-    const mobileBtnPrev = document.getElementById('mobile-btn-prev');
-    if (mobileBtnPrev) {
-      mobileBtnPrev.addEventListener('click', () => {
-        const idx = this.modules.indexOf(this.currentModule);
-        if (idx > 0) {
-          sound.click();
-          this.switchModule(this.modules[idx - 1]);
-        }
-      });
-    }
-
-    const mobileBtnNext = document.getElementById('mobile-btn-next');
-    if (mobileBtnNext) {
-      mobileBtnNext.addEventListener('click', () => {
-        const idx = this.modules.indexOf(this.currentModule);
-        if (idx < this.modules.length - 1) {
-          sound.click();
-          this.switchModule(this.modules[idx + 1]);
-        }
-      });
-    }
-
     // Start battery button
     const btnStart = document.getElementById('btn-start-battery');
     if (btnStart) {
@@ -344,7 +357,7 @@ const AppNav = {
     if (btnDismiss) {
       btnDismiss.addEventListener('click', () => {
         const banner = document.getElementById('alert-banner');
-        if (banner) banner.style.display = 'none';
+        banner.style.display = 'none';
       });
     }
 
@@ -359,27 +372,27 @@ const AppNav = {
       });
     }
 
-    // DaisyUI Theme toggle (corporate <-> business)
+    // Dark/Light theme toggle
     const btnTheme = document.getElementById('btn-theme-toggle');
     if (btnTheme) {
       btnTheme.addEventListener('click', () => {
-        const html = document.documentElement;
-        const currentTheme = html.getAttribute('data-theme') || 'corporate';
-        const isDark = (currentTheme === 'business' || currentTheme === 'dark');
-        const nextTheme = isDark ? 'corporate' : 'business';
-        html.setAttribute('data-theme', nextTheme);
-
-        btnTheme.querySelector('.icon-moon').classList.toggle('hidden', !isDark);
-        btnTheme.querySelector('.icon-sun').classList.toggle('hidden', isDark);
+        const isDark = document.body.classList.toggle('theme-dark');
+        document.body.classList.toggle('theme-light', !isDark);
+        btnTheme.querySelector('.icon-moon').classList.toggle('hidden', isDark);
+        btnTheme.querySelector('.icon-sun').classList.toggle('hidden', !isDark);
         sound.click();
       });
     }
   },
 
   switchModule(moduleId) {
-    // Stop background animations if navigating away
-    if (this.currentModule === 'module-plates') PlatesEngine.stopDynamicNoiseLoop();
-    if (this.currentModule === 'module-cad') CadEngine.stopRenderingLoop();
+    // Stop animations if leaving module
+    if (this.currentModule === 'module-plates' && typeof PlatesEngine.stopDynamicNoiseLoop === 'function') {
+      PlatesEngine.stopDynamicNoiseLoop();
+    }
+    if (this.currentModule === 'module-cad' && typeof CadEngine.stopRenderingLoop === 'function') {
+      CadEngine.stopRenderingLoop();
+    }
 
     document.querySelectorAll('.diagnostic-module').forEach(m => m.classList.remove('active'));
     const target = document.getElementById(moduleId);
@@ -388,7 +401,13 @@ const AppNav = {
       this.currentModule = moduleId;
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      // Update DaisyUI Steps
+      // Update Desktop Nav Buttons
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const matches = btn.getAttribute('data-target') === moduleId;
+        btn.classList.toggle('active', matches);
+      });
+
+      // Update Mobile Header Status
       const stepMapping = {
         'module-calibration': 1,
         'module-plates': 2,
@@ -398,16 +417,6 @@ const AppNav = {
       };
       const activeStepNum = stepMapping[moduleId] || 1;
 
-      document.querySelectorAll('.nav-step').forEach((stepEl, idx) => {
-        const stepNum = idx + 1;
-        if (stepNum <= activeStepNum) {
-          stepEl.classList.add('step-primary');
-        } else {
-          stepEl.classList.remove('step-primary');
-        }
-      });
-
-      // Update Mobile Header Indicator & Progress Bar
       const stepTitles = {
         'module-calibration': 'Step 1: Calibration',
         'module-plates': 'Step 2: Dynamic Plates',
@@ -422,16 +431,14 @@ const AppNav = {
       if (indicatorEl) indicatorEl.textContent = `${activeStepNum} / 5`;
 
       const progressEl = document.getElementById('mobile-progress-bar');
-      if (progressEl) progressEl.value = (activeStepNum / 5) * 100;
+      if (progressEl) progressEl.style.width = `${(activeStepNum / 5) * 100}%`;
 
       const prevBtn = document.getElementById('mobile-btn-prev');
       if (prevBtn) {
         if (activeStepNum === 1) {
           prevBtn.setAttribute('disabled', 'true');
-          prevBtn.classList.add('opacity-40', 'cursor-not-allowed');
         } else {
           prevBtn.removeAttribute('disabled');
-          prevBtn.classList.remove('opacity-40', 'cursor-not-allowed');
         }
       }
 
@@ -439,10 +446,8 @@ const AppNav = {
       if (nextBtn) {
         if (activeStepNum === 5) {
           nextBtn.setAttribute('disabled', 'true');
-          nextBtn.classList.add('opacity-40', 'cursor-not-allowed');
         } else {
           nextBtn.removeAttribute('disabled');
-          nextBtn.classList.remove('opacity-40', 'cursor-not-allowed');
         }
       }
 
@@ -451,7 +456,7 @@ const AppNav = {
       const title = target.querySelector('h2') ? target.querySelector('h2').textContent : moduleId;
       if (announcer) announcer.textContent = `Navigated to ${title}`;
 
-      // Initialize active module
+      // Trigger module-specific initializations
       if (moduleId === 'module-plates') PlatesEngine.onModuleActivate();
       if (moduleId === 'module-d15') D15Engine.onModuleActivate();
       if (moduleId === 'module-cad') CadEngine.onModuleActivate();
@@ -461,7 +466,7 @@ const AppNav = {
 };
 
 // ============================================================================
-// 5. MODULE 2: DYNAMIC PSEUDOISOCHROMATIC PLATES (DLCN)
+// 5. MODULE 2: DYNAMIC PSEUDOISOCHROMATIC PLATES ENGINE (DLCN)
 // ============================================================================
 const PlatesEngine = {
   canvas: null,
@@ -471,19 +476,19 @@ const PlatesEngine = {
   userAnswers: [],
   startTime: 0,
   currentInput: '',
+  timerInterval: null,
   dynamicNoiseInterval: null,
   dynamicNoiseEnabled: true,
-  isSubmitting: false, // Prevents rapid double-click input bugs
+  isSubmitting: false,
 
   init() {
     this.canvas = document.getElementById('plate-canvas');
     if (!this.canvas) return;
     this.ctx = this.canvas.getContext('2d');
 
-    // Keypad event listeners
+    // Setup input keypad
     document.querySelectorAll('.keypad-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        if (this.isSubmitting) return;
         const key = e.currentTarget.getAttribute('data-key');
         if (key === 'none') {
           this.submitAnswer('NONE');
@@ -494,10 +499,7 @@ const PlatesEngine = {
     });
 
     document.getElementById('btn-input-clear').addEventListener('click', () => this.clearInput());
-    document.getElementById('btn-submit-plate').addEventListener('click', () => {
-      if (!this.isSubmitting) this.submitAnswer(this.currentInput);
-    });
-
+    document.getElementById('btn-submit-plate').addEventListener('click', () => this.submitAnswer(this.currentInput));
     document.getElementById('btn-regenerate-plate').addEventListener('click', () => {
       sound.click();
       this.generatePlate(this.currentIdx);
@@ -517,7 +519,7 @@ const PlatesEngine = {
 
     // Physical Keyboard listener
     window.addEventListener('keydown', (e) => {
-      if (AppNav.currentModule !== 'module-plates' || this.isSubmitting) return;
+      if (AppNav.currentModule !== 'module-plates') return;
       if (e.key >= '0' && e.key <= '9') {
         this.appendDigit(e.key);
       } else if (e.key.toLowerCase() === 'x') {
@@ -546,7 +548,6 @@ const PlatesEngine = {
       dot.className = `progress-dot ${i === this.currentIdx ? 'active' : ''}`;
       dot.setAttribute('title', `Plate ${i + 1}: ${p.category}`);
       dot.addEventListener('click', () => {
-        if (this.isSubmitting) return;
         this.currentIdx = i;
         this.generatePlate(i);
       });
@@ -596,8 +597,10 @@ const PlatesEngine = {
   },
 
   stopDynamicNoiseLoop() {
-    if (this.dynamicNoiseInterval) clearInterval(this.dynamicNoiseInterval);
-    this.dynamicNoiseInterval = null;
+    if (this.dynamicNoiseInterval) {
+      clearInterval(this.dynamicNoiseInterval);
+      this.dynamicNoiseInterval = null;
+    }
   },
 
   generatePlate(idx) {
@@ -619,7 +622,7 @@ const PlatesEngine = {
     const cy = h / 2;
     const radius = w * 0.44;
 
-    // Offscreen raster mask for glyph
+    // Create an offscreen canvas to render the glyph raster mask
     const off = document.createElement('canvas');
     off.width = w;
     off.height = h;
@@ -630,28 +633,38 @@ const PlatesEngine = {
     octx.font = 'bold 210px sans-serif';
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.fillText(plate.digit, cx, cy + 10);
+
+    if (!plate.hiddenPattern) {
+      octx.fillText(plate.digit, cx, cy + 10);
+    } else {
+      // Hidden plate mask
+      octx.fillText(plate.digit, cx, cy + 10);
+    }
 
     const maskData = octx.getImageData(0, 0, w, h).data;
 
-    // Packed random dots with DLCN
+    // Generate packed random dots with Poisson-like spacing
     this.dots = [];
     const numDots = 880;
     const fgRgb = CVD.hexToRgb(plate.fgColor);
     const bgRgb = CVD.hexToRgb(plate.bgColor);
 
     for (let i = 0; i < numDots; i++) {
+      // Polar distribution within circle
       const r = Math.sqrt(Math.random()) * radius;
       const theta = Math.random() * 2 * Math.PI;
       const x = cx + r * Math.cos(theta);
       const y = cy + r * Math.sin(theta);
 
+      // Check if inside digit mask
       const px = Math.floor(x);
       const py = Math.floor(y);
       const inMask = (px >= 0 && px < w && py >= 0 && py < h) ? (maskData[(py * w + px) * 4] > 128) : false;
 
+      // Base color
       let baseRgb = inMask ? fgRgb : bgRgb;
       if (plate.hiddenPattern && inMask) {
+        // Invert condition for hidden plate
         baseRgb = Math.random() > 0.35 ? fgRgb : bgRgb;
       }
 
@@ -672,7 +685,7 @@ const PlatesEngine = {
 
   jitterDotLuminances() {
     for (let d of this.dots) {
-      d.lumJitter = (Math.random() - 0.5) * 0.32;
+      d.lumJitter = (Math.random() - 0.5) * 0.32; // Dynamic flicker
     }
   },
 
@@ -682,6 +695,7 @@ const PlatesEngine = {
     const h = this.canvas.height;
     this.ctx.clearRect(0, 0, w, h);
 
+    // Plate background disk
     this.ctx.save();
     this.ctx.beginPath();
     this.ctx.arc(w / 2, h / 2, w * 0.455, 0, Math.PI * 2);
@@ -689,6 +703,7 @@ const PlatesEngine = {
     this.ctx.fill();
     this.ctx.clip();
 
+    // Render every dot with its DLCN luminance modifier
     for (const d of this.dots) {
       const [r, g, b] = d.baseRgb;
       const factor = 1.0 + d.lumJitter;
@@ -706,7 +721,6 @@ const PlatesEngine = {
 
   submitAnswer(ans) {
     if (!ans && ans !== 'NONE') return;
-    this.isSubmitting = true;
     const latency = Math.round(performance.now() - this.startTime);
     document.getElementById('plate-latency-indicator').textContent = `Latency: ${latency} ms`;
 
@@ -723,32 +737,33 @@ const PlatesEngine = {
 
     this.updateProgressDots();
 
+    // Auto advance
     if (this.currentIdx < PLATES_DATA.length - 1) {
       setTimeout(() => {
         this.generatePlate(this.currentIdx + 1);
         this.isSubmitting = false;
       }, 350);
     } else {
-      document.getElementById('plates-completion-text').textContent = 'Plate screening complete! Ready for D-15.';
+      document.getElementById('plates-completion-text').textContent = 'Screening Complete! Click Proceed to continue.';
       sound.chimeSuccess();
-      this.isSubmitting = false;
     }
   },
 
   isAnswerCorrect(idx, ans) {
     const expected = PLATES_DATA[idx].digit;
     if (PLATES_DATA[idx].type === 'hidden') {
-      return ans === 'NONE';
+      return ans === 'NONE'; // Correct if patient cannot see hidden pattern
     }
     return ans.trim() === expected;
   }
 };
 
 // ============================================================================
-// 6. MODULE 3: FARNSWORTH D-15 (VINGRYS & KING-SMITH MOMENT OF INERTIA)
+// 6. MODULE 3: QUANTITATIVE FARNSWORTH D-15 (VINGRYS & KING-SMITH)
 // ============================================================================
 const D15Engine = {
   currentOrder: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+  trayCaps: [],
   selectedCapEl: null,
   draggedCapId: null,
 
@@ -762,9 +777,9 @@ const D15Engine = {
       const val = e.target.value;
       if (val === 'user') return;
       if (D15_ARCHETYPES[val]) {
-        this.deselectCap();
         this.currentOrder = [...D15_ARCHETYPES[val]];
         this.renderRack();
+        this.renderTray();
         this.analyze();
         sound.click();
       }
@@ -777,105 +792,19 @@ const D15Engine = {
 
     document.getElementById('btn-d15-reset').addEventListener('click', () => {
       sound.click();
-      this.deselectCap();
       this.currentOrder = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
       this.renderRack();
+      this.renderTray();
       this.analyze();
     });
-
-    // Mobile Reorder Action Bar Buttons
-    const btnLeft = document.getElementById('btn-cap-move-left');
-    if (btnLeft) {
-      btnLeft.addEventListener('click', () => this.moveSelectedCap(-1));
-    }
-    const btnRight = document.getElementById('btn-cap-move-right');
-    if (btnRight) {
-      btnRight.addEventListener('click', () => this.moveSelectedCap(1));
-    }
-    const btnDeselect = document.getElementById('btn-cap-deselect');
-    if (btnDeselect) {
-      btnDeselect.addEventListener('click', () => {
-        sound.click();
-        this.deselectCap();
-      });
-    }
   },
 
   onModuleActivate() {
-    this.deselectCap();
     this.renderRack();
     this.analyze();
-  },
-
-  selectCap(capEl) {
-    if (this.selectedCapEl) {
-      this.selectedCapEl.classList.remove('selected');
-    }
-    this.selectedCapEl = capEl;
-    capEl.classList.add('selected');
-
-    const capId = parseInt(capEl.getAttribute('data-cap'), 10);
-    const badge = document.getElementById('d15-selected-cap-badge');
-    if (badge) badge.textContent = `Cap ${capId}`;
-
-    const bar = document.getElementById('d15-mobile-reorder-bar');
-    if (bar) bar.classList.remove('hidden');
-
-    const idx = this.currentOrder.indexOf(capId);
-    const btnLeft = document.getElementById('btn-cap-move-left');
-    const btnRight = document.getElementById('btn-cap-move-right');
-    if (btnLeft) {
-      if (idx <= 0) {
-        btnLeft.setAttribute('disabled', 'true');
-        btnLeft.classList.add('opacity-40', 'cursor-not-allowed');
-      } else {
-        btnLeft.removeAttribute('disabled');
-        btnLeft.classList.remove('opacity-40', 'cursor-not-allowed');
-      }
-    }
-    if (btnRight) {
-      if (idx >= this.currentOrder.length - 1) {
-        btnRight.setAttribute('disabled', 'true');
-        btnRight.classList.add('opacity-40', 'cursor-not-allowed');
-      } else {
-        btnRight.removeAttribute('disabled');
-        btnRight.classList.remove('opacity-40', 'cursor-not-allowed');
-      }
-    }
-  },
-
-  deselectCap() {
-    if (this.selectedCapEl) {
-      this.selectedCapEl.classList.remove('selected');
-      this.selectedCapEl = null;
-    }
-    const bar = document.getElementById('d15-mobile-reorder-bar');
-    if (bar) bar.classList.add('hidden');
-  },
-
-  moveSelectedCap(direction) {
-    if (!this.selectedCapEl) return;
-    const capId = parseInt(this.selectedCapEl.getAttribute('data-cap'), 10);
-    const idx = this.currentOrder.indexOf(capId);
-    if (idx === -1) return;
-    const newIdx = idx + direction;
-    if (newIdx < 0 || newIdx >= this.currentOrder.length) return;
-
-    [this.currentOrder[idx], this.currentOrder[newIdx]] = [this.currentOrder[newIdx], this.currentOrder[idx]];
-    this.renderRack();
-    this.analyze();
-    sound.click();
-
-    // Re-select in new position and scroll into view smoothly
-    const newCapEl = document.querySelector(`#d15-arrangement-rack .d15-cap[data-cap="${capId}"]`);
-    if (newCapEl) {
-      this.selectCap(newCapEl);
-      newCapEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
   },
 
   shuffleCaps() {
-    this.deselectCap();
     const array = [...this.currentOrder];
     for (let i = array.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -890,17 +819,18 @@ const D15Engine = {
     const rack = document.getElementById('d15-arrangement-rack');
     if (!rack) return;
     
+    // Retain Cap 0 Pilot
     rack.innerHTML = `
-      <div class="d15-cap fixed-pilot shrink-0 rounded-lg p-1.5 flex flex-col items-center justify-between shadow border-2 border-primary bg-base-100 w-12 h-18 cursor-not-allowed" id="cap-pilot" data-cap="0" role="listitem" aria-label="Reference Pilot Cap 0">
-        <div class="w-full h-10 rounded shadow-inner" style="background-color: ${D15_CAPS[0].hex};"></div>
-        <div class="text-[10px] font-bold font-mono text-base-content/70">0 (Pilot)</div>
+      <div class="d15-cap fixed-pilot" id="cap-pilot" data-cap="0" role="listitem" aria-label="Reference Pilot Cap 0">
+        <div class="cap-color" style="background-color: ${D15_CAPS[0].hex};"></div>
+        <div class="cap-number">0 (Pilot)</div>
       </div>
     `;
 
     this.currentOrder.forEach((capId, slotIdx) => {
       const capData = D15_CAPS[capId];
       const el = document.createElement('div');
-      el.className = 'd15-cap shrink-0 rounded-lg p-1.5 flex flex-col items-center justify-between shadow border border-base-300 bg-base-100 w-12 h-18 cursor-grab';
+      el.className = 'd15-cap';
       el.setAttribute('draggable', 'true');
       el.setAttribute('data-cap', capId);
       el.setAttribute('data-slot', slotIdx);
@@ -908,8 +838,8 @@ const D15Engine = {
       el.setAttribute('aria-label', `Cap ${capId}`);
 
       el.innerHTML = `
-        <div class="w-full h-10 rounded shadow-inner pointer-events-none" style="background-color: ${capData.hex};"></div>
-        <div class="text-[11px] font-bold font-mono text-base-content/80 pointer-events-none">${capId}</div>
+        <div class="cap-color" style="background-color: ${capData.hex};"></div>
+        <div class="cap-number">${capId}</div>
       `;
 
       rack.appendChild(el);
@@ -922,57 +852,56 @@ const D15Engine = {
     const tray = document.getElementById('d15-cap-tray');
     if (!tray) return;
     tray.innerHTML = '';
+    // Tray can hold quick selector caps
     [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].forEach(capId => {
       const capData = D15_CAPS[capId];
       const el = document.createElement('div');
-      el.className = 'd15-cap shrink-0 rounded-lg p-1.5 flex flex-col items-center justify-between shadow border border-base-300 bg-base-100 w-12 h-18 cursor-pointer hover:-translate-y-1';
+      el.className = 'd15-cap tray-cap';
       el.setAttribute('data-cap', capId);
       el.innerHTML = `
-        <div class="w-full h-10 rounded shadow-inner pointer-events-none" style="background-color: ${capData.hex};"></div>
-        <div class="text-[11px] font-bold font-mono text-base-content/80 pointer-events-none">${capId}</div>
+        <div class="cap-color" style="background-color: ${capData.hex};"></div>
+        <div class="cap-number">${capId}</div>
       `;
       el.addEventListener('click', () => {
-        this.handleTrayCapTap(capId);
+        sound.click();
+        this.swapCapWithFirstAvailable(capId);
       });
       tray.appendChild(el);
     });
   },
 
-  handleTrayCapTap(capId) {
+  swapCapWithFirstAvailable(capId) {
     if (this.selectedCapEl) {
       const capA = parseInt(this.selectedCapEl.getAttribute('data-cap'), 10);
       const idxA = this.currentOrder.indexOf(capA);
       const idxB = this.currentOrder.indexOf(capId);
       if (idxA !== -1 && idxB !== -1) {
         [this.currentOrder[idxA], this.currentOrder[idxB]] = [this.currentOrder[idxB], this.currentOrder[idxA]];
-        this.deselectCap();
+        this.selectedCapEl.classList.remove('selected');
+        this.selectedCapEl = null;
         this.renderRack();
         this.analyze();
         sound.chimeSuccess();
-      }
-    } else {
-      const rackCap = document.querySelector(`#d15-arrangement-rack .d15-cap[data-cap="${capId}"]`);
-      if (rackCap) {
-        this.selectCap(rackCap);
-        sound.click();
-        rackCap.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
       }
     }
   },
 
   attachCapEventListeners() {
-    const caps = document.querySelectorAll('#d15-arrangement-rack .d15-cap:not(.fixed-pilot)');
+    const caps = document.querySelectorAll('.d15-rack .d15-cap:not(.fixed-pilot)');
     caps.forEach(cap => {
-      // Tap-to-swap / tap-to-select
+      // Tap-to-Swap for mobile & click
       cap.addEventListener('click', (e) => {
         const clickedCap = e.currentTarget;
         if (this.selectedCapEl === null) {
-          this.selectCap(clickedCap);
+          this.selectedCapEl = clickedCap;
+          clickedCap.classList.add('selected');
           sound.click();
         } else if (this.selectedCapEl === clickedCap) {
-          this.deselectCap();
+          clickedCap.classList.remove('selected');
+          this.selectedCapEl = null;
           sound.click();
         } else {
+          // Swap positions
           const capA = parseInt(this.selectedCapEl.getAttribute('data-cap'), 10);
           const capB = parseInt(clickedCap.getAttribute('data-cap'), 10);
           const idxA = this.currentOrder.indexOf(capA);
@@ -980,7 +909,8 @@ const D15Engine = {
 
           if (idxA !== -1 && idxB !== -1) {
             [this.currentOrder[idxA], this.currentOrder[idxB]] = [this.currentOrder[idxB], this.currentOrder[idxA]];
-            this.deselectCap();
+            this.selectedCapEl.classList.remove('selected');
+            this.selectedCapEl = null;
             this.renderRack();
             this.analyze();
             sound.chimeSuccess();
@@ -988,7 +918,7 @@ const D15Engine = {
         }
       });
 
-      // Desktop Drag & Drop
+      // HTML5 Drag and Drop
       cap.addEventListener('dragstart', (e) => {
         this.draggedCapId = parseInt(cap.getAttribute('data-cap'), 10);
         cap.classList.add('dragging');
@@ -999,7 +929,9 @@ const D15Engine = {
         cap.classList.remove('dragging');
       });
 
-      cap.addEventListener('dragover', (e) => e.preventDefault());
+      cap.addEventListener('dragover', (e) => {
+        e.preventDefault();
+      });
 
       cap.addEventListener('drop', (e) => {
         e.preventDefault();
@@ -1026,6 +958,9 @@ const D15Engine = {
     }
   },
 
+  /**
+   * Vingrys & King-Smith (1988) Moment of Inertia Quantitative Analysis
+   */
   analyze() {
     const seq = [0, ...this.currentOrder];
     let totDist = 0;
@@ -1042,6 +977,7 @@ const D15Engine = {
       sUV += du * dv;
     }
 
+    // Moments of inertia
     const tr = sUU + sVV;
     const diff = sUU - sVV;
     const discr = Math.sqrt(diff * diff + 4 * sUV * sUV);
@@ -1049,24 +985,28 @@ const D15Engine = {
     const minRad = Math.sqrt(Math.max(0, (tr - discr) / 2));
     const sIndex = minRad > 0.00001 ? (majRad / minRad) : 1.0;
 
+    // Angle of confusion in degrees (-90 to +90)
     let angle = 0.5 * Math.atan2(2 * sUV, diff) * (180 / Math.PI);
 
+    // Confusion index (relative to perfect normal distance)
     const normalDist = 0.22565;
     const cIndex = totDist / normalDist;
 
+    // Classification
     let diagnosis = 'Normal Trichromat';
     let statusBadgeClass = 'badge-success';
     let rationale = 'Cap sequence reflects a circular progression without major diameter crossings. S-index is below 1.40.';
 
     if (cIndex >= 1.25) {
       if (sIndex > 1.65) {
+        // Systematic congenital defect axis
         if (angle >= -25 && angle <= 25) {
           diagnosis = 'Protan Defect (L-Cone Deficiency)';
-          statusBadgeClass = 'badge-error';
+          statusBadgeClass = 'badge-protan';
           rationale = `Vectors cross along the Protan confusion axis (angle: ${angle.toFixed(1)}°). Severe reduction in L-cone discrimination.`;
-        } else if (angle < -25 && angle >= -80) {
+        } else if (angle < -25 && angle >= -85) {
           diagnosis = 'Deutan Defect (M-Cone Deficiency)';
-          statusBadgeClass = 'badge-success';
+          statusBadgeClass = 'badge-deutan';
           rationale = `Vectors cross along the Deutan confusion axis (angle: ${angle.toFixed(1)}°). Severe reduction in M-cone discrimination.`;
         } else {
           diagnosis = 'Tritan Defect (S-Cone Deficiency)';
@@ -1075,35 +1015,38 @@ const D15Engine = {
         }
       } else {
         diagnosis = 'Non-Selective Color Confusion';
-        statusBadgeClass = 'badge-neutral';
+        statusBadgeClass = 'badge-dark';
         rationale = 'Multiple error crossings without a clear polar axis (S-index < 1.40). Typical of acquired ocular pathology or severe rod monochromacy.';
       }
     }
 
-    // Update DOM
+    // Update DOM Metrics
     document.getElementById('metric-c-index').textContent = cIndex.toFixed(2);
     document.getElementById('metric-s-index').textContent = sIndex.toFixed(2);
     document.getElementById('metric-angle').textContent = `${angle >= 0 ? '+' : ''}${angle.toFixed(1)}°`;
     document.getElementById('metric-distance').textContent = totDist.toFixed(3);
 
+    // Progress Bar fills
     const barC = Math.min(100, Math.round((cIndex / 3.0) * 100));
-    document.getElementById('bar-c-index').value = barC;
+    document.getElementById('bar-c-index').style.width = `${barC}%`;
     const barS = Math.min(100, Math.round((sIndex / 5.0) * 100));
-    document.getElementById('bar-s-index').value = barS;
+    document.getElementById('bar-s-index').style.width = `${barS}%`;
 
     const needle = document.getElementById('angle-compass-needle');
     if (needle) needle.style.transform = `rotate(${angle}deg)`;
 
     const badge = document.getElementById('d15-classification-badge');
-    badge.className = `badge ${statusBadgeClass} font-bold text-xs`;
+    badge.className = `badge ${statusBadgeClass}`;
     badge.textContent = diagnosis;
     document.getElementById('d15-clinical-rationale').textContent = rationale;
 
-    this.renderPolarSvg(seq);
+    // Render SVG Polar Graph
+    this.renderPolarSvg(seq, angle);
+
     return { cIndex, sIndex, angle, totDist, diagnosis };
   },
 
-  renderPolarSvg(seq) {
+  renderPolarSvg(seq, confusionAngle) {
     const vectorGroup = document.getElementById('svg-vector-paths');
     const nodesGroup = document.getElementById('svg-cap-nodes');
     if (!vectorGroup || !nodesGroup) return;
@@ -1113,8 +1056,10 @@ const D15Engine = {
 
     const cx = 210, cy = 210, r = 160;
 
+    // Coordinate positions for caps on the polar diagram
     const positions = {};
     for (let i = 0; i <= 15; i++) {
+      // Angles around circle
       const th = ((i / 16) * 2 * Math.PI) - Math.PI / 2;
       positions[i] = {
         x: cx + r * Math.cos(th),
@@ -1122,7 +1067,7 @@ const D15Engine = {
       };
     }
 
-    // Sequence lines
+    // Draw user sequence paths
     let pathD = `M ${positions[seq[0]].x} ${positions[seq[0]].y}`;
     for (let i = 1; i < seq.length; i++) {
       pathD += ` L ${positions[seq[i]].x} ${positions[seq[i]].y}`;
@@ -1130,13 +1075,13 @@ const D15Engine = {
     const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     pathEl.setAttribute('d', pathD);
     pathEl.setAttribute('fill', 'none');
-    pathEl.setAttribute('stroke', 'currentColor');
+    pathEl.setAttribute('stroke', 'var(--text-main)');
     pathEl.setAttribute('stroke-width', '2.5');
     pathEl.setAttribute('stroke-linejoin', 'round');
     pathEl.setAttribute('stroke-linecap', 'round');
     vectorGroup.appendChild(pathEl);
 
-    // Nodes
+    // Draw Cap Nodes
     for (let i = 0; i <= 15; i++) {
       const p = positions[i];
       const capData = D15_CAPS[i];
@@ -1145,7 +1090,7 @@ const D15Engine = {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', p.x);
       circle.setAttribute('cy', p.y);
-      circle.setAttribute('r', i === 0 ? '11' : '8.5');
+      circle.setAttribute('r', i === 0 ? '10' : '8');
       circle.setAttribute('fill', capData.hex);
       circle.setAttribute('stroke', '#ffffff');
       circle.setAttribute('stroke-width', '2');
@@ -1167,7 +1112,7 @@ const D15Engine = {
 };
 
 // ============================================================================
-// 7. MODULE 4: CAD ADAPTIVE TRIVECTOR ENGINE
+// 7. MODULE 4: COMPUTERIZED ADAPTIVE CAD / CAMBRIDGE TRIVECTOR ENGINE
 // ============================================================================
 const CadEngine = {
   canvas: null,
@@ -1175,22 +1120,25 @@ const CadEngine = {
   staircaseCanvas: null,
   sCtx: null,
 
+  // Vectors to test: 0 = Protan, 1 = Deutan, 2 = Tritan
   currentVectorIdx: 0,
   vectors: [
-    { name: 'Protan Axis (L-Cone)', badge: 'badge-error', axis: 'protan', colorHex: '#ef4444' },
-    { name: 'Deutan Axis (M-Cone)', badge: 'badge-success', axis: 'deutan', colorHex: '#10b981' },
-    { name: 'Tritan Axis (S-Cone)', badge: 'badge-info', axis: 'tritan', colorHex: '#3b82f6' }
+    { name: 'Protan (L-Cone)', badge: 'badge-protan', axis: 'protan', colorHex: '#ef4444' },
+    { name: 'Deutan (M-Cone)', badge: 'badge-deutan', axis: 'deutan', colorHex: '#10b981' },
+    { name: 'Tritan (S-Cone)', badge: 'badge-tritan', axis: 'tritan', colorHex: '#3b82f6' }
   ],
 
-  contrast: 1.0,
-  stepSize: 0.15,
+  // Staircase state
+  contrast: 1.0,         // Current chromatic contrast [0.05 to 1.0]
+  stepSize: 0.12,
   consecutiveCorrect: 0,
   reversals: 0,
   maxReversals: 6,
-  lastDirection: null,
-  history: [],
+  lastDirection: null,   // 'down' or 'up'
+  history: [],           // [{contrast, correct}]
   thresholds: { protan: null, deutan: null, tritan: null },
 
+  // Landolt C orientation: 0=up, 1=right, 2=down, 3=left
   orientations: ['up', 'right', 'down', 'left'],
   currentOrientation: 'up',
   noiseField: [],
@@ -1204,6 +1152,7 @@ const CadEngine = {
     this.ctx = this.canvas.getContext('2d');
     this.sCtx = this.staircaseCanvas.getContext('2d');
 
+    // Directional button listeners
     document.querySelectorAll('.dpad-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const dir = e.currentTarget.getAttribute('data-dir');
@@ -1211,6 +1160,7 @@ const CadEngine = {
       });
     });
 
+    // Arrow keys
     window.addEventListener('keydown', (e) => {
       if (AppNav.currentModule !== 'module-cad') return;
       if (e.key === 'ArrowUp')    { e.preventDefault(); this.handleUserResponse('up'); }
@@ -1239,7 +1189,7 @@ const CadEngine = {
           x: x + (Math.random() - 0.5) * 4,
           y: y + (Math.random() - 0.5) * 4,
           r: 4.5 + Math.random() * 2.5,
-          lum: 128 + Math.floor((Math.random() - 0.5) * 70)
+          lum: 128 + Math.floor((Math.random() - 0.5) * 70) // Dynamic luminance noise (DLCN)
         });
       }
     }
@@ -1256,7 +1206,7 @@ const CadEngine = {
 
     const vec = this.vectors[vectorIdx];
     const badge = document.getElementById('cad-current-vector-badge');
-    badge.className = `badge ${vec.badge} font-bold text-xs`;
+    badge.className = `badge ${vec.badge}`;
     badge.textContent = `Testing: ${vec.name}`;
     document.getElementById('cad-staircase-step').textContent = `Reversal 1 of ${this.maxReversals}`;
 
@@ -1269,8 +1219,16 @@ const CadEngine = {
     document.getElementById('cad-contrast-value').textContent = `${Math.round(this.contrast * 100)}%`;
   },
 
+  stopRenderingLoop() {
+    if (this.animFrameId) {
+      cancelAnimationFrame(this.animFrameId);
+      this.animFrameId = null;
+    }
+  },
+
   startRenderingLoop() {
-    this.stopRenderingLoop();
+    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+
     const render = () => {
       if (AppNav.currentModule === 'module-cad') {
         this.drawCadFrame();
@@ -1280,33 +1238,29 @@ const CadEngine = {
     render();
   },
 
-  stopRenderingLoop() {
-    if (this.animFrameId) {
-      cancelAnimationFrame(this.animFrameId);
-      this.animFrameId = null;
-    }
-  },
-
   drawCadFrame() {
     const w = this.canvas.width;
     const h = this.canvas.height;
     const cx = w / 2;
     const cy = h / 2;
-    this.ctx.fillStyle = '#7a7a7a';
+    this.ctx.fillStyle = '#7a7a7a'; // Mean isoluminant background
     this.ctx.fillRect(0, 0, w, h);
 
     const vec = this.vectors[this.currentVectorIdx];
     const fgRgb = CVD.hexToRgb(vec.colorHex);
 
+    // Landolt-C dimensions
     const outerR = 90;
     const innerR = 48;
     const gapWidth = 38;
 
+    // Fast dynamic refresh of luminance noise
     for (const dot of this.noiseField) {
       if (Math.random() > 0.8) {
         dot.lum = 128 + Math.floor((Math.random() - 0.5) * 70);
       }
 
+      // Check if dot falls within Landolt C ring
       const dx = dot.x - cx;
       const dy = dot.y - cy;
       const dist = Math.hypot(dx, dy);
@@ -1324,12 +1278,14 @@ const CadEngine = {
       const isTarget = inRing && !inGap;
 
       if (isTarget) {
+        // Blend chromatic contrast with luminance noise
         const c = this.contrast;
         const r = Math.round((1 - c) * dot.lum + c * fgRgb[0]);
         const g = Math.round((1 - c) * dot.lum + c * fgRgb[1]);
         const b = Math.round((1 - c) * dot.lum + c * fgRgb[2]);
         this.ctx.fillStyle = `rgb(${r},${g},${b})`;
       } else {
+        // Achromatic luminance noise dot
         this.ctx.fillStyle = `rgb(${dot.lum},${dot.lum},${dot.lum})`;
       }
 
@@ -1343,12 +1299,14 @@ const CadEngine = {
     const isCorrect = (userDir === this.currentOrientation);
     this.history.push({ contrast: this.contrast, correct: isCorrect });
 
+    // Visual & audio feedback flash
     const overlay = document.getElementById('cad-flash-overlay');
     overlay.className = `cad-feedback-overlay ${isCorrect ? 'correct' : 'incorrect'}`;
     setTimeout(() => overlay.className = 'cad-feedback-overlay', 150);
 
     if (isCorrect) sound.chimeSuccess(); else sound.softError();
 
+    // 1-up / 2-down transformed psychometric rule
     let directionChanged = false;
 
     if (isCorrect) {
@@ -1373,13 +1331,14 @@ const CadEngine = {
     }
 
     if (directionChanged) {
-      this.stepSize = Math.max(0.02, this.stepSize * 0.75);
+      this.stepSize = Math.max(0.02, this.stepSize * 0.75); // Decrease step size as threshold narrows
     }
 
     document.getElementById('cad-staircase-step').textContent = `Reversal ${Math.min(this.maxReversals, this.reversals + 1)} of ${this.maxReversals}`;
 
     this.renderStaircaseChart();
 
+    // Check if current vector staircase finished
     if (this.reversals >= this.maxReversals || this.history.length >= 18) {
       this.finalizeCurrentVector();
     } else {
@@ -1388,32 +1347,38 @@ const CadEngine = {
   },
 
   finalizeCurrentVector() {
+    // Average last 3 reversals to compute discrimination threshold in CAD units
     const recent = this.history.slice(-6);
     const avgContrast = recent.reduce((sum, h) => sum + h.contrast, 0) / recent.length;
+
+    // Convert raw contrast [0-1] to standard CAD units (1.0 = normal baseline limit)
+    // 0.08 contrast -> 1.0 CAD units (Normal). 0.60 contrast -> 7.5 CAD units (Dichromat).
     const cadUnits = Math.max(0.7, (avgContrast / 0.08)).toFixed(1);
 
     const vecKey = this.vectors[this.currentVectorIdx].axis;
     this.thresholds[vecKey] = parseFloat(cadUnits);
 
+    // Update gauge
     document.getElementById(`cad-thresh-${vecKey}`).textContent = `${cadUnits} CAD`;
     const barFill = Math.min(100, Math.round((cadUnits / 8.0) * 100));
-    document.getElementById(`cad-bar-${vecKey}`).value = barFill;
+    document.getElementById(`cad-bar-${vecKey}`).style.width = `${barFill}%`;
     const box = document.getElementById(`vbox-${vecKey}`);
     const statusEl = box.querySelector('.vbox-status');
 
     if (cadUnits <= 1.2) {
       statusEl.textContent = 'Normal';
-      statusEl.className = 'vbox-status text-[10px] text-success font-bold block mt-1';
+      statusEl.className = 'vbox-status text-xs text-success';
     } else if (cadUnits <= 2.5) {
       statusEl.textContent = 'Mild Loss';
-      statusEl.className = 'vbox-status text-[10px] text-warning font-bold block mt-1';
+      statusEl.className = 'vbox-status text-xs text-warning';
     } else {
       statusEl.textContent = 'Deficient';
-      statusEl.className = 'vbox-status text-[10px] text-error font-bold block mt-1';
+      statusEl.className = 'vbox-status text-xs text-danger';
     }
 
     sound.chimeSuccess();
 
+    // Advance to next vector or conclude
     if (this.currentVectorIdx < 2) {
       setTimeout(() => {
         this.resetVectorStaircase(this.currentVectorIdx + 1);
@@ -1429,6 +1394,7 @@ const CadEngine = {
     const h = this.staircaseCanvas.height;
     this.sCtx.clearRect(0, 0, w, h);
 
+    // Background & grid lines
     this.sCtx.fillStyle = '#f8fafc';
     this.sCtx.fillRect(0, 0, w, h);
     this.sCtx.strokeStyle = '#e2e8f0';
@@ -1443,6 +1409,7 @@ const CadEngine = {
 
     if (this.history.length === 0) return;
 
+    // Draw staircase trajectory
     const stepX = (w - 30) / Math.max(12, this.history.length);
     this.sCtx.beginPath();
     this.sCtx.strokeStyle = this.vectors[this.currentVectorIdx].colorHex;
@@ -1455,6 +1422,7 @@ const CadEngine = {
     });
     this.sCtx.stroke();
 
+    // Draw trial outcome dots
     this.history.forEach((trial, i) => {
       const x = 15 + i * stepX;
       const y = h - 15 - (trial.contrast * (h - 30));
@@ -1476,8 +1444,11 @@ const ClinicalSynthesis = {
   isDraggingSplit: false,
 
   init() {
+    // Simulator controls
     document.getElementById('select-sim-scene').addEventListener('change', () => this.renderSimulator());
-    document.getElementById('select-sim-type').addEventListener('change', () => this.renderSimulator());
+    document.getElementById('select-sim-type').addEventListener('change', (e) => {
+      this.renderSimulator();
+    });
     document.getElementById('slider-sim-severity').addEventListener('input', (e) => {
       const val = parseInt(e.target.value, 10);
       this.activeSeverity = val / 100;
@@ -1485,7 +1456,7 @@ const ClinicalSynthesis = {
       this.renderSimulator();
     });
 
-    // Comparison slider mouse, touch & keyboard drag
+    // Split slider mouse & touch drag
     const viewport = document.getElementById('sim-viewport');
     const divider = document.getElementById('sim-slider-divider');
 
@@ -1495,7 +1466,6 @@ const ClinicalSynthesis = {
       ratio = Math.max(0.05, Math.min(0.95, ratio));
       this.splitRatio = ratio;
       divider.style.left = `${ratio * 100}%`;
-      divider.setAttribute('aria-valuenow', Math.round(ratio * 100));
       document.getElementById('sim-clip-container').style.width = `${ratio * 100}%`;
     };
 
@@ -1505,39 +1475,16 @@ const ClinicalSynthesis = {
       if (this.isDraggingSplit) updateSliderPos(e.clientX);
     });
 
-    divider.addEventListener('touchstart', () => this.isDraggingSplit = true, { passive: true });
+    // Touch events for mobile
+    divider.addEventListener('touchstart', () => this.isDraggingSplit = true);
     window.addEventListener('touchend', () => this.isDraggingSplit = false);
     window.addEventListener('touchmove', (e) => {
       if (this.isDraggingSplit && e.touches.length > 0) {
         updateSliderPos(e.touches[0].clientX);
       }
-    }, { passive: true });
-
-    // Allow mobile & desktop users to tap/click directly anywhere on the viewport to jump slider
-    viewport.addEventListener('click', (e) => {
-      updateSliderPos(e.clientX);
     });
 
-    viewport.addEventListener('touchstart', (e) => {
-      if (e.touches.length > 0) {
-        updateSliderPos(e.touches[0].clientX);
-      }
-    }, { passive: true });
-
-    // Slider keyboard arrow keys
-    divider.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft') {
-        this.splitRatio = Math.max(0.05, this.splitRatio - 0.05);
-        divider.style.left = `${this.splitRatio * 100}%`;
-        document.getElementById('sim-clip-container').style.width = `${this.splitRatio * 100}%`;
-      } else if (e.key === 'ArrowRight') {
-        this.splitRatio = Math.min(0.95, this.splitRatio + 0.05);
-        divider.style.left = `${this.splitRatio * 100}%`;
-        document.getElementById('sim-clip-container').style.width = `${this.splitRatio * 100}%`;
-      }
-    });
-
-    // Export & Actions
+    // Actions & export
     document.getElementById('btn-print-report').addEventListener('click', () => window.print());
     document.getElementById('btn-export-json').addEventListener('click', () => this.exportJsonReport());
     document.getElementById('btn-copy-summary').addEventListener('click', () => this.copySummaryToClipboard());
@@ -1551,7 +1498,11 @@ const ClinicalSynthesis = {
     });
   },
 
+  /**
+   * Multi-Battery Cross-Validation & Diagnostic Classification
+   */
   generateReport() {
+    // 1. Analyze Plates Battery
     let plateErrors = 0;
     let protanDeutanPlateErrors = 0;
     let tritanPlateErrors = 0;
@@ -1565,12 +1516,16 @@ const ClinicalSynthesis = {
       }
     });
 
+    // 2. Analyze Farnsworth D-15 VKS (1988)
     const d15Result = D15Engine.analyze();
+
+    // 3. Analyze CAD Thresholds
     const cad = CadEngine.thresholds;
     const protanCad = cad.protan !== null ? cad.protan : (d15Result.diagnosis.includes('Protan') ? 5.2 : 0.9);
     const deutanCad = cad.deutan !== null ? cad.deutan : (d15Result.diagnosis.includes('Deutan') ? 5.4 : 0.9);
     const tritanCad = cad.tritan !== null ? cad.tritan : (d15Result.diagnosis.includes('Tritan') ? 4.8 : 1.0);
 
+    // 4. Synthesize Multi-Factor Classification
     let diagnosis = 'Normal Trichromacy';
     let severity = 'Normal';
     let confidence = 98;
@@ -1580,7 +1535,7 @@ const ClinicalSynthesis = {
     let lHealth = 98, mHealth = 97, sHealth = 99;
 
     if (d15Result.cIndex > 1.25 || plateErrors >= 2 || protanCad > 2.0 || deutanCad > 2.0 || tritanCad > 2.0) {
-      if (d15Result.diagnosis.includes('Protan') || (protanCad >= deutanCad && protanCad > 1.8)) {
+      if (d15Result.diagnosis.includes('Protan') || protanCad >= deutanCad && protanCad > 1.8) {
         defectKey = 'protanopia';
         const isSevere = d15Result.cIndex > 2.0 || protanCad > 4.0;
         diagnosis = isSevere ? 'Protanopia (Severe Red-Blindness)' : 'Protanomaly (Mild Red-Weakness)';
@@ -1588,7 +1543,7 @@ const ClinicalSynthesis = {
         explanation = 'L-cone photopigment (erythrolabe) is missing or spectrally shifted toward medium wavelengths. Causes severe confusion between reds, oranges, greens, and dark cyan.';
         lHealth = isSevere ? 12 : 55;
         confidence = 96;
-      } else if (d15Result.diagnosis.includes('Deutan') || (deutanCad > protanCad && deutanCad > 1.8)) {
+      } else if (d15Result.diagnosis.includes('Deutan') || deutanCad > protanCad && deutanCad > 1.8) {
         defectKey = 'deuteranopia';
         const isSevere = d15Result.cIndex > 2.0 || deutanCad > 4.0;
         diagnosis = isSevere ? 'Deuteranopia (Severe Green-Blindness)' : 'Deuteranomaly (Mild Green-Weakness)';
@@ -1616,42 +1571,47 @@ const ClinicalSynthesis = {
 
     this.activeDefectType = defectKey;
 
+    // Update Primary Card DOM
     document.getElementById('report-primary-diagnosis').textContent = diagnosis;
     document.getElementById('report-diagnosis-explanation').textContent = explanation;
     const sevEl = document.getElementById('report-severity');
     sevEl.textContent = severity;
-    sevEl.className = `stat-value text-xl font-mono ${severity === 'Normal' ? 'text-success' : 'text-error'}`;
+    sevEl.className = `stat-value ${severity === 'Normal' ? 'text-success' : 'text-danger'}`;
     document.getElementById('report-confidence').textContent = `${confidence}%`;
 
     const faaEl = document.getElementById('report-faa-status');
     const faaEligible = (severity === 'Normal' || (severity.includes('Mild') && d15Result.cIndex < 1.35));
     faaEl.textContent = faaEligible ? 'Eligible' : 'Restricted';
-    faaEl.className = `stat-value text-xl font-mono ${faaEligible ? 'text-success' : 'text-error'}`;
+    faaEl.className = `stat-value ${faaEligible ? 'text-success' : 'text-danger'}`;
 
+    // Update Cone Function Bars
     document.getElementById('report-l-cone-pct').textContent = `${lHealth}%`;
-    document.getElementById('report-l-cone-bar').value = lHealth;
+    document.getElementById('report-l-cone-bar').style.width = `${lHealth}%`;
     document.getElementById('report-m-cone-pct').textContent = `${mHealth}%`;
-    document.getElementById('report-m-cone-bar').value = mHealth;
+    document.getElementById('report-m-cone-bar').style.width = `${mHealth}%`;
     document.getElementById('report-s-cone-pct').textContent = `${sHealth}%`;
-    document.getElementById('report-s-cone-bar').value = sHealth;
+    document.getElementById('report-s-cone-bar').style.width = `${sHealth}%`;
 
+    // Update Breakdown Table
+    const answeredCount = PlatesEngine.userAnswers.length;
     const platesScore = PLATES_DATA.length - plateErrors;
     document.getElementById('table-plates-metric').textContent = `${platesScore} of ${PLATES_DATA.length} Correct (${plateErrors} errors)`;
     const plateBadge = document.getElementById('table-plates-badge');
     plateBadge.textContent = plateErrors <= 1 ? 'Pass' : 'Flagged';
-    plateBadge.className = `badge ${plateErrors <= 1 ? 'badge-success' : 'badge-error'} font-bold text-xs`;
+    plateBadge.className = `badge ${plateErrors <= 1 ? 'badge-success' : 'badge-protan'}`;
 
     document.getElementById('table-d15-metric').textContent = `C-Index: ${d15Result.cIndex.toFixed(2)} • S-Index: ${d15Result.sIndex.toFixed(2)} • Angle: ${d15Result.angle >= 0 ? '+' : ''}${d15Result.angle.toFixed(1)}°`;
     const d15Badge = document.getElementById('table-d15-badge');
     d15Badge.textContent = d15Result.diagnosis.includes('Normal') ? 'Normal' : 'Deficient';
-    d15Badge.className = `badge ${d15Result.diagnosis.includes('Normal') ? 'badge-success' : 'badge-error'} font-bold text-xs`;
+    d15Badge.className = `badge ${d15Result.diagnosis.includes('Normal') ? 'badge-success' : 'badge-protan'}`;
 
     document.getElementById('table-cad-metric').textContent = `Protan: ${protanCad} CAD • Deutan: ${deutanCad} CAD • Tritan: ${tritanCad} CAD`;
     const cadBadge = document.getElementById('table-cad-badge');
     const cadPass = (protanCad <= 1.5 && deutanCad <= 1.5 && tritanCad <= 1.5);
     cadBadge.textContent = cadPass ? 'Within Limits' : 'Elevated';
-    cadBadge.className = `badge ${cadPass ? 'badge-success' : 'badge-error'} font-bold text-xs`;
+    cadBadge.className = `badge ${cadPass ? 'badge-success' : 'badge-protan'}`;
 
+    // Update Occupational Narrative
     if (faaEligible) {
       document.getElementById('report-occ-aviation').textContent = 'Demonstrates unrestricted chromatic sensitivity under computerized color vision testing criteria. Meets FAA Class 1, 2, and 3 medical certification without daylight-only flight restriction.';
       document.getElementById('report-occ-maritime').textContent = 'Full safety clearance for marine watchstanding and reliable port/starboard navigation light recognition under standard night maritime conditions.';
@@ -1662,9 +1622,13 @@ const ClinicalSynthesis = {
       document.getElementById('report-occ-electrical').textContent = 'High probability of error distinguishing between adjacent resistor multiplier bands (brown/red/orange/green). Digital multimeter verification advised.';
     }
 
+    // Update Simulator
     this.renderSimulator();
   },
 
+  /**
+   * Render the physiological vision simulator onto canvas layers
+   */
   renderSimulator() {
     const canvasNorm = document.getElementById('sim-canvas-normal');
     const canvasFilt = document.getElementById('sim-canvas-filtered');
@@ -1677,6 +1641,7 @@ const ClinicalSynthesis = {
     let defect = document.getElementById('select-sim-type').value;
     if (defect === 'auto') defect = this.activeDefectType;
 
+    // Update label
     const labelEl = document.getElementById('sim-current-label');
     const defectNames = {
       normal: 'Normal Trichromat',
@@ -1687,8 +1652,10 @@ const ClinicalSynthesis = {
     };
     labelEl.textContent = `Simulated: ${defectNames[defect] || defect}`;
 
+    // Draw procedural high-fidelity scene onto normal canvas
     this.drawProceduralScene(ctxNorm, scene, canvasNorm.width, canvasNorm.height);
 
+    // Get image data and apply Machado LMS pixel transform
     const imgData = ctxNorm.getImageData(0, 0, canvasNorm.width, canvasNorm.height);
     const data = imgData.data;
 
@@ -1705,16 +1672,21 @@ const ClinicalSynthesis = {
     ctxFilt.putImageData(imgData, 0, 0);
   },
 
+  /**
+   * Generate realistic, crisp scenes to demonstrate color blindness
+   */
   drawProceduralScene(ctx, scene, w, h) {
     ctx.clearRect(0, 0, w, h);
 
     if (scene === 'traffic') {
+      // Scene: Traffic Signals at night / dusk
       const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
       skyGrad.addColorStop(0, '#0f172a');
       skyGrad.addColorStop(1, '#1e293b');
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, w, h);
 
+      // Traffic light housing
       ctx.fillStyle = '#0f172a';
       ctx.strokeStyle = '#334155';
       ctx.lineWidth = 4;
@@ -1723,6 +1695,7 @@ const ClinicalSynthesis = {
       ctx.fill();
       ctx.stroke();
 
+      // Red Light
       const redGlow = ctx.createRadialGradient(w / 2, 90, 10, w / 2, 90, 50);
       redGlow.addColorStop(0, '#ff4d4d');
       redGlow.addColorStop(0.6, '#dc2626');
@@ -1732,17 +1705,19 @@ const ClinicalSynthesis = {
       ctx.arc(w / 2, 90, 40, 0, Math.PI * 2);
       ctx.fill();
 
+      // Amber Light (Dim)
       ctx.fillStyle = '#451a03';
       ctx.beginPath();
       ctx.arc(w / 2, 200, 38, 0, Math.PI * 2);
       ctx.fill();
 
+      // Green Light (Dim)
       ctx.fillStyle = '#064e3b';
       ctx.beginPath();
       ctx.arc(w / 2, 310, 38, 0, Math.PI * 2);
       ctx.fill();
 
-      // STOP Sign
+      // Road Sign: Red Stop Sign on left
       ctx.fillStyle = '#dc2626';
       ctx.beginPath();
       const sx = 140, sy = 240, r = 60;
@@ -1764,7 +1739,7 @@ const ClinicalSynthesis = {
       ctx.textBaseline = 'middle';
       ctx.fillText('STOP', sx, sy);
 
-      // Highway Sign
+      // Green Highway Sign on right
       ctx.fillStyle = '#15803d';
       ctx.fillRect(w - 220, 180, 160, 110);
       ctx.strokeStyle = '#ffffff';
@@ -1778,6 +1753,7 @@ const ClinicalSynthesis = {
       ctx.fillText('Downtown ➡', w - 140, 255);
 
     } else if (scene === 'plate') {
+      // Scene: Classic Ishihara Plate pattern
       ctx.fillStyle = '#f8fafc';
       ctx.fillRect(0, 0, w, h);
       ctx.fillStyle = '#1e293b';
@@ -1791,8 +1767,9 @@ const ClinicalSynthesis = {
       ctx.fillStyle = '#f1f5f9';
       ctx.fill();
 
-      const fgHex = '#16a34a';
-      const bgHex = '#ea580c';
+      // Render dot mosaic with number 74
+      const fgHex = '#16a34a'; // Green
+      const bgHex = '#ea580c'; // Orange-red
 
       for (let i = 0; i < 480; i++) {
         const rad = Math.sqrt(Math.random()) * 140;
@@ -1801,6 +1778,7 @@ const ClinicalSynthesis = {
         const y = cy + rad * Math.sin(ang);
         const dr = 4 + Math.random() * 8;
 
+        // Approximate digit 74 region
         const inDigit = (x > cx - 60 && x < cx - 10 && (y < cy - 20 || (y > cy - 60 && y < cy - 40))) ||
                         (x > cx + 10 && x < cx + 60 && (x < cx + 25 || y > cy));
 
@@ -1811,9 +1789,11 @@ const ClinicalSynthesis = {
       }
 
     } else if (scene === 'fruit') {
+      // Scene: Ripe fruit detection (Strawberries, Bananas, Apples)
       ctx.fillStyle = '#f8fafc';
       ctx.fillRect(0, 0, w, h);
 
+      // Wooden bowl background
       ctx.fillStyle = '#854d0e';
       ctx.beginPath();
       ctx.ellipse(w / 2, h / 2 + 50, 280, 110, 0, 0, Math.PI * 2);
@@ -1843,16 +1823,19 @@ const ClinicalSynthesis = {
       ctx.arc(w / 2 - 10, h / 2 + 5, 26, 0, Math.PI * 2);
       ctx.fill();
 
+      // Green Strawberry leaves
       ctx.fillStyle = '#16a34a';
       ctx.fillRect(w / 2 - 18, h / 2 - 30, 16, 12);
 
     } else {
+      // Scene: Autumn Landscape
       const sky = ctx.createLinearGradient(0, 0, 0, h * 0.55);
       sky.addColorStop(0, '#38bdf8');
       sky.addColorStop(1, '#bae6fd');
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, w, h);
 
+      // Distant blue mountain
       ctx.fillStyle = '#475569';
       ctx.beginPath();
       ctx.moveTo(80, h * 0.6);
@@ -1860,16 +1843,19 @@ const ClinicalSynthesis = {
       ctx.lineTo(w - 60, h * 0.6);
       ctx.fill();
 
+      // Autumn orange/red foliage hills
       ctx.fillStyle = '#ea580c';
       ctx.beginPath();
       ctx.ellipse(200, h * 0.7, 240, 90, 0, 0, Math.PI * 2);
       ctx.fill();
 
+      // Golden yellow tree cluster
       ctx.fillStyle = '#eab308';
       ctx.beginPath();
       ctx.ellipse(w - 180, h * 0.72, 220, 80, 0, 0, Math.PI * 2);
       ctx.fill();
 
+      // Evergreen green trees
       ctx.fillStyle = '#15803d';
       ctx.beginPath();
       ctx.moveTo(w / 2 - 40, h * 0.8);
@@ -1882,7 +1868,7 @@ const ClinicalSynthesis = {
   exportJsonReport() {
     const reportData = {
       application: 'ChromaClear Clinical Color Vision Suite',
-      version: '1.1.0',
+      version: '1.0.0',
       timestamp: new Date().toISOString(),
       standards: ['CIE 1976 UCS', 'Vingrys & King-Smith (1988)', 'City University CAD', 'Machado (2009) LMS'],
       primaryDiagnosis: document.getElementById('report-primary-diagnosis').textContent,

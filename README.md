@@ -2,11 +2,11 @@
 ### Clinical & Occupational Color Vision Diagnostic Suite
 
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Ready-brightgreen?logo=github)](https://pages.github.com/)
-[![DaisyUI](https://img.shields.io/badge/DaisyUI-v4-570df8?logo=daisyui)](https://daisyui.com/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38bdf8?logo=tailwind-css)](https://tailwindcss.com/)
+[![Pure CSS & HTML](https://img.shields.io/badge/CSS3%20%2F%20HTML5-Bespoke%20Design-blue?logo=css3)](https://www.w3.org/Style/CSS/)
 [![Standards](https://img.shields.io/badge/CIE%201976%20UCS-Standardized-blue)](https://cie.co.at/)
+[![Mobile Friendly](https://img.shields.io/badge/Mobile-Touch%20Optimized-success?logo=apple)](https://developer.mozilla.org/)
 
-**ChromaClear** is a state-of-the-art, single-page web application engineered to screen, quantitatively grade, and clinically classify color vision deficiencies (CVD). Built upon peer-reviewed vision science and styled with **DaisyUI** and **Tailwind CSS**, it eliminates the display luminance artifacts that plague naive digital tests and incorporates quantitative algorithms from clinical ophthalmology.
+**ChromaClear** is a state-of-the-art, single-page web application engineered to screen, quantitatively grade, and clinically classify color vision deficiencies (CVD). Crafted with a bespoke clinical design in pure HTML5, CSS3, and modern JavaScript, it eliminates the display luminance artifacts that plague naive digital tests and incorporates quantitative algorithms from clinical ophthalmology without any framework bloat or build steps.
 
 ---
 
@@ -114,10 +114,9 @@ ChromaClear is engineered from the ground up for phone, tablet, and desktop view
 
 ```
 ColorBlind/
-├── index.html         # Semantic, accessible one-page UI with DaisyUI & Tailwind
-├── style.css          # High-precision companion stylesheet (Retina canvas, print rules)
+├── index.html         # Semantic, accessible one-page UI with bespoke clinical styling
+├── style.css          # Comprehensive stylesheet (clinical theme, Retina canvas, print rules)
 ├── app.js             # Core colorimetry, procedural plate generator & CAD engine
-├── daisyui.min.css    # Standalone offline DaisyUI component styles
 ├── .nojekyll          # Bypasses Jekyll processing on GitHub Pages
 ├── .gitignore         # OS and editor ignore rules
 └── README.md          # Project documentation and deployment guide
